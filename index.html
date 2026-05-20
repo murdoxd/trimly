@@ -1744,13 +1744,11 @@ function setLang(lang, btn) {
   if (delYes) delYes.textContent = lang==='az'?'Bəli, sil':lang==='ru'?'Да, удалить':'Yes, delete';
 
   // Re-render active dynamic pages so inner content translates
-  if (document.getElementById('page-register').classList.contains('active')) {
+  if (document.getElementById('page-barberportal').classList.contains('active')) {
     const activeTab = document.querySelector('.rsb.active');
     if (activeTab) regTab(activeTab.id.replace('rs-',''));
-  }
-  if (document.getElementById('page-login').classList.contains('active')) {
-    const activeLoginTab = document.querySelector('.ltab.active');
-    showLoginTab(activeLoginTab?.id === 'lt-login' ? 'login' : 'signup');
+    const activePortalTab = document.querySelector('#bp-tab-login.active');
+    if (!activePortalTab) showBarberPortalTab('register');
   }
   if (document.getElementById('page-booking').classList.contains('active')) {
     renderBooking();
@@ -1908,9 +1906,12 @@ function showBarberPortalTab(tab) {
 }
 
 function showLoginTab(tab) {
-  document.getElementById('lt-login').classList.toggle('active',tab==='login');
-  document.getElementById('lt-signup').classList.toggle('active',tab==='signup');
+  const lt = document.getElementById('lt-login');
+  const ls = document.getElementById('lt-signup');
+  if (lt) lt.classList.toggle('active',tab==='login');
+  if (ls) ls.classList.toggle('active',tab==='signup');
   const c = document.getElementById('login-content');
+  if (!c) return;
   const Tc = T[currentLang];
   if (tab==='login') {
     c.innerHTML=`
@@ -2413,8 +2414,12 @@ async function submitReview() {
 
 // ── REGISTER ──
 function regTab(tab) {
-  ['profile','schedule','services','payment'].forEach(t=>document.getElementById('rs-'+t).classList.toggle('active',t===tab));
+  ['profile','schedule','services','payment'].forEach(t=>{
+    const el = document.getElementById('rs-'+t);
+    if (el) el.classList.toggle('active',t===tab);
+  });
   const c=document.getElementById('reg-content');
+  if (!c) return;
   if (tab==='profile') {
     c.innerHTML=`<div class="card-box">
       <div class="fg"><label class="fl">Foto (isteğe bağlı)</label>
@@ -3608,9 +3613,7 @@ function dismissPWA() {
   await checkAuth();
   loadHomeStats();
   checkAdminHash();
-  showLoginTab('login');
   showClientTab('login');
-  regTab('profile');
 
   // Restore page state after refresh
   const { page, state } = loadNavState();
@@ -3623,7 +3626,7 @@ function dismissPWA() {
       nav('dashboard');
     } else if (page === 'clientdash' && currentClient) {
       nav('clientdash');
-    } else if (['barbers','barberportal','clientlogin','privacy','terms'].includes(page)) {
+    } else if (['barbers','barberportal','clientlogin','privacy','terms','mappage'].includes(page)) {
       nav(page);
     }
   }
