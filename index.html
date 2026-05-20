@@ -127,6 +127,8 @@ DATABASE ADDITIONS NEEDED (run these too):
 <link rel="manifest" href="/manifest.json" id="pwa-manifest-link">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✂</text></svg>">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✂</text></svg>">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
@@ -445,6 +447,24 @@ textarea.ff{resize:vertical;min-height:80px}
 .error-banner{background:var(--red-light);border:1px solid #fca5a5;border-radius:9px;padding:10px 13px;font-size:13px;color:var(--red);margin-bottom:12px}
 .cancel-btn{background:none;border:1px solid #fca5a5;border-radius:6px;padding:3px 8px;font-size:11px;color:var(--red);cursor:pointer;transition:all .15s}
 .cancel-btn:hover{background:var(--red-light)}
+/* Map page */
+.map-marker-popup{font-family:'DM Sans',sans-serif;min-width:180px}
+.map-marker-popup h4{font-size:14px;font-weight:600;margin-bottom:4px}
+.map-marker-popup p{font-size:12px;color:#666;margin-bottom:8px}
+.map-popup-btn{background:#1a9e6e;color:white;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:500;cursor:pointer;width:100%}
+/* Client base panel */
+@media(max-width:860px){#clients-panel-grid{grid-template-columns:1fr!important}}
+.client-list-item{display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer;border-bottom:1px solid var(--gray-border);transition:background .1s}
+.client-list-item:hover{background:var(--gray-light)}
+.client-list-item.active{background:var(--green-light)}
+.client-list-item:last-child{border-bottom:none}
+.client-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--green-dark),var(--green));display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:600;flex-shrink:0}
+.client-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.client-stat-box{background:var(--gray-light);border-radius:10px;padding:12px;text-align:center}
+.client-stat-box .val{font-family:'DM Serif Display',serif;font-size:22px;display:block}
+.client-stat-box .lbl{font-size:11px;color:var(--gray)}
+.booking-hist-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-border)}
+.booking-hist-item:last-child{border-bottom:none}
 /* Client login page */
 .client-login-layout{max-width:400px;margin:0 auto;padding:60px 24px}
 /* Blocked dates */
@@ -599,6 +619,10 @@ textarea.ff{resize:vertical;min-height:80px}
     <button class="nav-btn" id="nb-client-login" onclick="nav('clientlogin')">Müştəri girişi</button>
     <button class="nav-btn" id="nb-dashboard" style="display:none" onclick="nav('dashboard')">Kabinetim</button>
     <button class="nav-btn" id="nb-clientdash" style="display:none" onclick="nav('clientdash')">Sifarişlərim</button>
+    <button class="nav-btn" id="nb-map" onclick="nav('mappage')" style="display:flex;align-items:center;gap:5px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      Xəritə
+    </button>
   </div>
   <div class="topbar-right">
     <div class="lang-switcher">
@@ -622,6 +646,7 @@ textarea.ff{resize:vertical;min-height:80px}
   <button class="mobile-nav-btn" id="mob-login-btn" style="display:none" onclick="nav('login');closeMobileNav()">Bərbər girişi</button>
   <button class="mobile-nav-btn" id="mob-client-login-btn" onclick="nav('clientlogin');closeMobileNav()">Müştəri girişi</button>
   <button class="mobile-nav-btn" id="mob-clientdash-btn" style="display:none" onclick="nav('clientdash');closeMobileNav()">Sifarişlərim</button>
+  <button class="mobile-nav-btn" onclick="nav('mappage');closeMobileNav()">🗺 Xəritə</button>
   <button class="mobile-nav-btn" id="mob-dash-btn" style="display:none" onclick="nav('dashboard');closeMobileNav()">Kabinetim</button>
   <button class="mobile-nav-btn" id="mob-logout-btn" style="display:none;color:var(--red)" onclick="logout();closeMobileNav()">Çıxış</button>
 </div>
@@ -634,14 +659,12 @@ textarea.ff{resize:vertical;min-height:80px}
     <p id="t-hero-p">Yaxınlıqdakı bərbərləri tap, uyğun vaxt seç və gəl.</p>
     <div class="hero-btns">
       <button class="btn-hero-main" onclick="nav('barbers')" id="t-browse-btn">Bərbərlərə bax</button>
-      <button class="btn-hero-sec" onclick="nav('barberportal')" id="t-barber-btn">Mən bərbərəm</button>
-    </div>
-    <div class="urgent-wrap">
-      <button class="urgent-btn" onclick="openModal('urgent-modal')">
-        <span class="urgent-dot"></span>
-        <span id="t-urgent-text">İndi dərhal bərbər lazımdır</span>
+      <button class="btn-hero-sec" onclick="nav('mappage')" id="t-map-btn" style="display:flex;align-items:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Xəritədə gör
       </button>
     </div>
+
   </div>
   <div class="stats-bar">
     <div class="stat-item"><div class="stat-num" id="stat-barbers">—</div><div class="stat-lbl" id="t-stat1">Aktiv bərbərlər</div></div>
@@ -721,6 +744,8 @@ textarea.ff{resize:vertical;min-height:80px}
           <div class="profile-meta-row"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span id="pp-hours">—</span></div>
           <div class="profile-meta-row" id="pp-location-row" style="display:none"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><a id="pp-map-link" href="#" target="_blank" rel="noopener" style="color:var(--green)">Xəritədə gör</a></div>
         </div>
+        <!-- Inline map on profile -->
+        <div id="pp-map-container" style="display:none;width:100%;height:200px;border-radius:12px;overflow:hidden;margin-bottom:16px;border:1px solid var(--gray-border)"></div>
         <div class="profile-about" id="pp-about" style="display:none"></div>
         <div style="display:flex;gap:10px;margin-top:8px">
           <button class="book-now-btn" onclick="bookFromProfile()" style="flex:1">Sifariş et</button>
@@ -934,11 +959,32 @@ textarea.ff{resize:vertical;min-height:80px}
       </div>
     </div></div>
 
-    <div style="margin-top:20px"><div class="dash-card">
-      <h3>👥 Müştərilər</h3>
-      <p style="font-size:13px;color:var(--gray);margin-bottom:14px;line-height:1.6">Sizdə sifariş etmiş bütün müştərilər.</p>
-      <div id="dash-clients-list"><div class="loading">Yüklənir...</div></div>
-    </div></div>
+    <div style="margin-top:20px">
+      <div style="display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start" id="clients-panel-grid">
+        <!-- LEFT: client list -->
+        <div class="dash-card" style="padding:0;overflow:hidden">
+          <div style="padding:16px 18px;border-bottom:1px solid var(--gray-border);display:flex;justify-content:space-between;align-items:center">
+            <h3 style="margin:0">👥 Müştərilər</h3>
+            <span id="clients-total-badge" style="font-size:12px;background:var(--gray-light);padding:3px 9px;border-radius:20px;color:var(--gray)">0</span>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid var(--gray-border)">
+            <div class="search-wrap" style="margin:0">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--gray)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" placeholder="Müştəri axtar..." oninput="filterClientList(this.value)" style="border:none;background:transparent;font-size:13px;outline:none;flex:1">
+            </div>
+          </div>
+          <div id="dash-clients-list" style="max-height:520px;overflow-y:auto"></div>
+        </div>
+        <!-- RIGHT: client detail -->
+        <div class="dash-card" id="client-detail-panel">
+          <div style="text-align:center;padding:40px 20px;color:var(--gray)">
+            <div style="font-size:48px;margin-bottom:12px">👤</div>
+            <div style="font-size:14px">Müştəri seçin</div>
+            <div style="font-size:12px;margin-top:4px">Soldan müştərini seçin — bütün məlumatları burada görünəcək</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div style="margin-top:20px"><div class="dash-card">
       <h3>📱 Telegram bildirişləri</h3>
@@ -1041,6 +1087,22 @@ textarea.ff{resize:vertical;min-height:80px}
     <div class="footer-links">
       <button class="footer-link" onclick="nav('privacy')">Məxfilik Siyasəti</button>
       <button class="footer-link" onclick="nav('home')">Ana səhifə</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAP PAGE -->
+<div class="page" id="page-mappage">
+  <div style="position:relative;width:100%;height:calc(100vh - 60px)">
+    <div id="map-container" style="width:100%;height:100%;background:var(--gray-light)">
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;color:var(--gray)">
+        <div class="loading">Xəritə yüklənir...</div>
+      </div>
+    </div>
+    <!-- Map barber cards overlay -->
+    <div id="map-barber-panel" style="position:absolute;bottom:0;left:0;right:0;background:white;border-radius:20px 20px 0 0;padding:16px;max-height:40vh;overflow-y:auto;box-shadow:0 -4px 20px rgba(0,0,0,0.12);display:none">
+      <div style="width:40px;height:4px;background:var(--gray-border);border-radius:2px;margin:0 auto 14px"></div>
+      <div id="map-barber-card"></div>
     </div>
   </div>
 </div>
@@ -1273,7 +1335,7 @@ const T = {
     'hero-tag':'İndi Bakıda, Azərbaycanda',
     'hero-h1':'Növbəti saç kəsiminə<br><em>saniyələrdə</em> yazıl',
     'hero-p':'Yaxınlıqdakı bərbərləri tap, uyğun vaxt seç və gəl.',
-    'browse-btn':'Bərbərlərə bax','barber-btn':'Mən bərbərəm',
+    'browse-btn':'Bərbərlərə bax','barber-btn':'Xəritədə gör',
     'urgent-text':'İndi dərhal bərbər lazımdır',
     'urgent-title':'İndi bərbər lazımdır','urgent-desc':'Bu gün ən erkən boş slotu tapacağıq.',
     'stat1':'Aktiv bərbərlər','stat2':'Sifarişlər','stat3':'Orta reytinq',
@@ -1365,7 +1427,7 @@ const T = {
     'hero-tag':'Теперь в Баку, Азербайджан',
     'hero-h1':'Запишитесь на стрижку<br>за <em>секунды</em>',
     'hero-p':'Найдите проверенных барберов рядом, выберите время и приходите.',
-    'browse-btn':'Смотреть барберов','barber-btn':'Я барбер',
+    'browse-btn':'Смотреть барберов','barber-btn':'На карте',
     'urgent-text':'Мне нужна стрижка прямо сейчас',
     'urgent-title':'Нужна стрижка сейчас','urgent-desc':'Найдём ближайший доступный слот сегодня.',
     'stat1':'Активных барберов','stat2':'Записей сделано','stat3':'Средний рейтинг',
@@ -1450,7 +1512,7 @@ const T = {
     'hero-tag':'Now in Baku, Azerbaijan',
     'hero-h1':'Book your next cut<br>in <em>seconds</em>',
     'hero-p':'Find verified barbers near you, pick a time, and show up.',
-    'browse-btn':'Browse barbers','barber-btn':"I'm a barber",
+    'browse-btn':'Browse barbers','barber-btn':'View on map',
     'urgent-text':'I need a cut right now',
     'urgent-title':'I need a cut right now','urgent-desc':"We'll find the earliest available slot today.",
     'stat1':'Active barbers','stat2':'Bookings made','stat3':'Average rating',
@@ -1577,6 +1639,7 @@ function setLang(lang, btn) {
     'nb-client-login':{az:'Müştəri girişi', ru:'Вход клиента', en:'Client login'},
     'nb-dashboard':{az:'Kabinetim', ru:'Кабинет',   en:'Dashboard'},
     'nb-clientdash':{az:'Sifarişlərim', ru:'Мои записи', en:'My bookings'},
+    'nb-map':      {az:'Xəritə',       ru:'Карта',         en:'Map'},
   };
   Object.entries(navLabels).forEach(([id, labels]) => {
     const el = document.getElementById(id); if (el) el.textContent = labels[lang];
@@ -1723,6 +1786,7 @@ function nav(page) {
   window.scrollTo(0,0);
   saveNavState(page);
   if (page==='barbers') loadBarbers();
+  if (page==='mappage') loadMapPage();
   if (page==='admin') loadAdmin();
   if (page==='dashboard') loadDashboard();
   if (page==='clientdash') loadClientDashboard();
@@ -1867,10 +1931,7 @@ function showLoginTab(tab) {
 
 async function signIn() {
   const rl = checkRateLimit('login');
-  if (rl.blocked) {
-    document.getElementById('login-error').innerHTML=`<div class="rate-limit-msg">Çox cəhd. ${rl.waitMins} dəqiqə gözləyin.</div>`;
-    return;
-  }
+  if (rl.blocked) { return; }
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
   if (!email||!pass) { toast('Bütün sahələri doldurun'); return; }
@@ -1882,10 +1943,7 @@ async function signIn() {
 
 async function signUp() {
   const rl = checkRateLimit('signup');
-  if (rl.blocked) {
-    document.getElementById('signup-error').innerHTML=`<div class="rate-limit-msg">Çox cəhd. ${rl.waitMins} dəqiqə gözləyin.</div>`;
-    return;
-  }
+  if (rl.blocked) { return; }
   const email = document.getElementById('signup-email').value.trim();
   const pass = document.getElementById('signup-pass').value;
   if (!email||!pass) { toast('Bütün sahələri doldurun'); return; }
@@ -2182,7 +2240,7 @@ function pickTime(t){bState.time=t;bState.step=2;renderBooking();}
 
 async function confirmBooking() {
   const rl=checkRateLimit('booking');
-  if (rl.blocked) { toast(`Çox cəhd. ${rl.waitMins} dəq. gözləyin.`); return; }
+  if (rl.blocked) { return; }
   const name=sanitize(document.getElementById('cn')?.value.trim()||'',100);
   const phone=sanitizePhone(document.getElementById('cp')?.value.trim()||'');
   if (!name||!phone) { toast('Ad və telefon nömrənizi daxil edin'); return; }
@@ -2479,14 +2537,14 @@ function toggleDay(d,btn) {
 
 async function submitRegistration() {
   const rl=checkRateLimit('register');
-  if (rl.blocked) { toast(`Çox cəhd. ${rl.waitMins} dəq. gözləyin.`); return; }
+  if (rl.blocked) { return; }
   if (!regForm.name||!regForm.salon) { toast('Əvvəlcə profilinizi tamamlayın'); regTab('profile'); return; }
   const btn=document.querySelector('#page-register .btn-main.green');
   if(btn){btn.disabled=true;btn.textContent='Göndərilir...';}
   const { data:authData, error:authErr } = await db.auth.signUp({ email:regForm.email, password:regForm.password, options:{data:{name:regForm.name}} });
   if (authErr && !authErr.message.includes('already registered') && !authErr.message.includes('User already registered')) {
     if (authErr.message.includes('rate limit')) {
-      toast('Çox cəhd. Bir neçə dəqiqə gözləyin.');
+
     } else {
       toast('Hesab xətası: ' + authErr.message);
     }
@@ -2681,6 +2739,31 @@ async function openBarberProfile(barberId) {
   favBtn.style.color = isFav ? 'var(--gold)' : '';
   loadPortfolio(barberId);
   loadProfileReviews(barberId);
+  loadProfileMap(barber);
+}
+
+async function loadProfileMap(barber) {
+  const container = document.getElementById('pp-map-container');
+  if (!container || !barber.location) return;
+  container.style.display = 'block';
+  container.innerHTML = '';
+  // Remove old map if exists
+  if (window._profileMap) { window._profileMap.remove(); window._profileMap = null; }
+  const searchAddr = barber.location + ', Baku, Azerbaijan';
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchAddr)}&limit=1`);
+    const results = await res.json();
+    if (!results || results.length === 0) { container.style.display='none'; return; }
+    const lat = parseFloat(results[0].lat);
+    const lng = parseFloat(results[0].lon);
+    window._profileMap = L.map(container, {zoomControl:false, dragging:false, scrollWheelZoom:false}).setView([lat,lng], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(window._profileMap);
+    const icon = L.divIcon({
+      html: `<div style="background:#1a9e6e;width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>`,
+      iconSize:[24,24], iconAnchor:[12,24], className:''
+    });
+    L.marker([lat,lng],{icon}).addTo(window._profileMap).bindPopup(sanitize(barber.name)).openPopup();
+  } catch(e) { container.style.display='none'; }
 }
 
 async function loadPortfolio(barberId) {
@@ -2798,7 +2881,7 @@ function showClientTab(tab) {
 
 async function clientSignIn() {
   const rl = checkRateLimit('client-login');
-  if (rl.blocked) { document.getElementById('cl-error').innerHTML=`<div class="rate-limit-msg">Çox cəhd. ${rl.waitMins} dəq. gözləyin.</div>`; return; }
+  if (rl.blocked) { return; }
   const email = document.getElementById('cl-email').value.trim();
   const pass = document.getElementById('cl-pass').value;
   if (!email||!pass) { toast('Bütün sahələri doldurun'); return; }
@@ -2824,7 +2907,7 @@ async function clientSignIn() {
 
 async function clientSignUp() {
   const rl = checkRateLimit('client-signup');
-  if (rl.blocked) { document.getElementById('cl-reg-error').innerHTML=`<div class="rate-limit-msg">Çox cəhd. ${rl.waitMins} dəq. gözləyin.</div>`; return; }
+  if (rl.blocked) { return; }
   const name = sanitize(document.getElementById('cl-name')?.value.trim()||'', 100);
   const phone = sanitizePhone(document.getElementById('cl-phone')?.value.trim()||'');
   const email = document.getElementById('cl-reg-email')?.value.trim().toLowerCase()||'';
@@ -3148,7 +3231,126 @@ async function deleteService(serviceId) {
 }
 
 // ── CLIENT HISTORY ──
+let allClientsData = [];
+
 async function loadClientHistory() {
+  if (!currentBarberProfile) return;
+  const { data:bookings } = await db.from('bookings')
+    .select('client_name,client_phone,date,time,status,services(name,price)')
+    .eq('barber_id', currentBarberProfile.id)
+    .order('date', {ascending:false});
+  const el = document.getElementById('dash-clients-list');
+  if (!el) return;
+  if (!bookings || bookings.length === 0) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--gray);font-size:13px">Hələ müştəri yoxdur</div>';
+    return;
+  }
+  // Group by phone
+  const clientMap = {};
+  bookings.forEach(b => {
+    const key = b.client_phone;
+    if (!clientMap[key]) {
+      clientMap[key] = { name: b.client_name, phone: b.client_phone, visits: 0, spent: 0, lastVisit: b.date, bookings: [] };
+    }
+    clientMap[key].bookings.push(b);
+    if (b.status === 'confirmed') {
+      clientMap[key].visits++;
+      clientMap[key].spent += b.services?.price || 0;
+    }
+    if (b.date > clientMap[key].lastVisit) clientMap[key].lastVisit = b.date;
+  });
+  allClientsData = Object.values(clientMap).sort((a,b) => b.visits - a.visits);
+  document.getElementById('clients-total-badge').textContent = allClientsData.length + ' nəfər';
+  renderClientList(allClientsData);
+}
+
+function renderClientList(clients) {
+  const el = document.getElementById('dash-clients-list');
+  if (!el) return;
+  if (clients.length === 0) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--gray);font-size:13px">Tapılmadı</div>';
+    return;
+  }
+  el.innerHTML = clients.map(c => `
+    <div class="client-list-item" onclick="selectClient('${sanitize(c.phone)}')" id="cli-${c.phone.replace(/[^0-9]/g,'')}">
+      <div class="client-avatar">${sanitize(c.name[0]||'?')}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sanitize(c.name)}</div>
+        <div style="font-size:11px;color:var(--gray)">${c.visits} ziyarət · ${c.spent} AZN · ${c.lastVisit}</div>
+      </div>
+      <span style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;flex-shrink:0;${c.visits===1?'background:#eff6ff;color:#1d4ed8':'background:var(--green-light);color:var(--green-dark)'}">${c.visits===1?'Yeni':c.visits+'x'}</span>
+    </div>`).join('');
+}
+
+function filterClientList(q) {
+  if (!q) { renderClientList(allClientsData); return; }
+  const filtered = allClientsData.filter(c =>
+    c.name.toLowerCase().includes(q.toLowerCase()) ||
+    c.phone.includes(q));
+  renderClientList(filtered);
+}
+
+function selectClient(phone) {
+  // Highlight selected
+  document.querySelectorAll('.client-list-item').forEach(el => el.classList.remove('active'));
+  const safePhone = phone.replace(/[^0-9]/g,'');
+  const item = document.getElementById('cli-' + safePhone);
+  if (item) item.classList.add('active');
+  // Find client data
+  const client = allClientsData.find(c => c.phone === phone);
+  if (!client) return;
+  const panel = document.getElementById('client-detail-panel');
+  const today = getTodayLocal();
+  const now = new Date();
+  const nowTime = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const upcoming = client.bookings.filter(b => b.status==='confirmed' && (b.date > today || (b.date===today && b.time > nowTime)));
+  const past = client.bookings.filter(b => b.status==='confirmed' && (b.date < today || (b.date===today && b.time <= nowTime)));
+  const cancelled = client.bookings.filter(b => b.status==='cancelled');
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="client-avatar" style="width:48px;height:48px;font-size:18px">${sanitize(client.name[0]||'?')}</div>
+        <div>
+          <div style="font-size:17px;font-weight:600">${sanitize(client.name)}</div>
+          <a href="tel:${sanitize(client.phone)}" style="font-size:13px;color:var(--green);text-decoration:none">📞 ${sanitize(client.phone)}</a>
+        </div>
+      </div>
+      <span style="font-size:11px;padding:4px 10px;border-radius:20px;font-weight:600;${client.visits===1?'background:#eff6ff;color:#1d4ed8':'background:var(--green-light);color:var(--green-dark)'}">${client.visits===1?'Yeni müştəri':'Daimi müştəri · '+client.visits+'x'}</span>
+    </div>
+    <div class="client-stat-grid">
+      <div class="client-stat-box"><span class="val">${client.visits}</span><span class="lbl">Ziyarət</span></div>
+      <div class="client-stat-box"><span class="val">${client.spent}</span><span class="lbl">AZN xərcləndi</span></div>
+      <div class="client-stat-box"><span class="val">${upcoming.length}</span><span class="lbl">Gələcək</span></div>
+    </div>
+    ${upcoming.length > 0 ? `
+    <div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">📅 Gələcək sifarişlər</div>
+    ${upcoming.map(b => `
+      <div class="booking-hist-item">
+        <div><div style="font-size:13px;font-weight:500">${sanitize(b.services?.name||'—')}</div>
+        <div style="font-size:11px;color:var(--gray)">${b.date} · ${b.time}</div></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px;font-weight:600;color:var(--green)">${b.services?.price||0} AZN</span>
+          <span class="ab upcoming">Gəlir</span>
+        </div>
+      </div>`).join('')}` : ''}
+    ${past.length > 0 ? `
+    <div style="font-size:12px;font-weight:600;color:var(--gray);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.05em">🕐 Keçmiş sifarişlər</div>
+    ${past.map(b => `
+      <div class="booking-hist-item">
+        <div><div style="font-size:13px;font-weight:500">${sanitize(b.services?.name||'—')}</div>
+        <div style="font-size:11px;color:var(--gray)">${b.date} · ${b.time}</div></div>
+        <span style="font-size:13px;font-weight:600;color:var(--gray)">${b.services?.price||0} AZN</span>
+      </div>`).join('')}` : ''}
+    ${cancelled.length > 0 ? `
+    <div style="font-size:12px;font-weight:600;color:var(--gray);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.05em">❌ Ləğv edilmiş (${cancelled.length})</div>` : ''}`;
+}
+
+async function showClientDetail(phone, name) {
+  // Legacy support - just select the client
+  selectClient(phone);
+}
+
+async function
   if (!currentBarberProfile) return;
   const { data:bookings } = await db.from('bookings')
     .select('client_name,client_phone,date,services(price)')
@@ -3251,6 +3453,81 @@ async function saveTelegramId() {
   // Test notification
   await sendTelegramTo(val, '✅ <b>Kavro.Club</b>\n\nTelegram bildirişləri aktiv edildi! Bundan sonra bütün yeni sifarişlər sizə gələcək.');
   toast('Telegram ID saxlanıldı!');
+}
+
+// ── MAP ──
+let mapInstance = null;
+let mapMarkers = [];
+
+async function loadMapPage() {
+  // Load barbers with locations
+  const { data:barbers } = await db.from('barbers')
+    .select('id,name,location,photo_url,specialty,rating,review_count,salons(name)')
+    .eq('status','active')
+    .not('location','is',null);
+
+  // Initialize map centered on Baku
+  await new Promise(r => setTimeout(r, 100)); // wait for DOM
+  const container = document.getElementById('map-container');
+  if (!container) return;
+
+  if (mapInstance) {
+    mapInstance.remove();
+    mapInstance = null;
+  }
+
+  container.innerHTML = '';
+  mapInstance = L.map('map-container', { zoomControl: true }).setView([40.4093, 49.8671], 12);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 19
+  }).addTo(mapInstance);
+
+  // Custom green marker
+  const greenIcon = L.divIcon({
+    html: `<div style="background:#1a9e6e;width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    className: ''
+  });
+
+  if (!barbers || barbers.length === 0) return;
+
+  mapMarkers = [];
+  const bounds = [];
+
+  barbers.forEach(b => {
+    // Try to geocode from location string using Nominatim
+    const searchAddr = (b.location || '') + ', Baku, Azerbaijan';
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchAddr)}&limit=1`)
+      .then(r => r.json())
+      .then(results => {
+        if (!results || results.length === 0) return;
+        const lat = parseFloat(results[0].lat);
+        const lng = parseFloat(results[0].lon);
+        const marker = L.marker([lat, lng], {icon: greenIcon}).addTo(mapInstance);
+        const rating = b.rating > 0 ? b.rating.toFixed(1) + '★' : 'Yeni';
+        marker.bindPopup(`
+          <div class="map-marker-popup">
+            <h4>${sanitize(b.name)}</h4>
+            <p>${sanitize(b.salons?.name||'Müstəqil')} · ${sanitize(b.specialty||'')}<br>
+            ${rating} (${b.review_count||0} rəy)</p>
+            <button class="map-popup-btn" onclick="closeMapPopupAndOpen('${b.id}')">Profili gör →</button>
+          </div>`, {maxWidth: 220});
+        mapMarkers.push({marker, barber: b});
+        bounds.push([lat, lng]);
+        if (bounds.length > 1) {
+          mapInstance.fitBounds(bounds, {padding: [40, 40]});
+        }
+      })
+      .catch(() => {});
+  });
+}
+
+function closeMapPopupAndOpen(barberId) {
+  if (mapInstance) mapInstance.closePopup();
+  openBarberProfile(barberId);
 }
 
 // ── UTILS ──
