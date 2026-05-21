@@ -1,122 +1,3 @@
-<!DOCTYPE html>
-<!--
-================================================================
-KAVRO.CLUB — COMPLETE PROJECT FILE v3.0.0
-================================================================
-CHANGES FROM v2.0.0:
-  [FIX] Page refresh state persistence via sessionStorage
-  [FIX] Duplicate submitReview() function removed
-  [FIX] Midnight booking bug fixed (local date used everywhere)
-  [FIX] Dashboard labels bookings as Passed / Upcoming
-  [FIX] Rank badges removed from barber cards
-  [FIX] Language order changed to AZ RU EN
-  [FIX] "For Barbers" nav hidden when barber is logged in
-  [FIX] "Top Rated Barbers" feature card removed
-  [NEW] Telegram notifications for new bookings & cancellations
-  [NEW] Favorites via localStorage (star icon, no login needed)
-  [NEW] Client self-cancellation from booking lookup
-  [NEW] Privacy Policy page
-  [NEW] Terms of Use page
-  [NEW] PWA manifest + service worker registration
-  [NEW] Full security checklist in comments
-  [NEW] Booking status labels (Passed / Upcoming / Cancelled)
-  [NEW] Multi-service summary on confirm step
-  [NEW] "For Barbers" removed from nav when logged in as barber
-
-TELEGRAM:
-  Bot Token: 8645466274:AAF_9hBTJwOdMyMIO1OFf8vQPEbct_0WcB0
-  Chat ID:   7568815452
-
-PRE-LAUNCH SECURITY CHECKLIST:
-  [ ] Enable RLS on all tables in Supabase (SQL below)
-  [ ] Rotate anon key if exposed in public repo
-  [ ] Set up email confirmation in Supabase Auth settings
-  [ ] Add rate limiting on Supabase edge functions if needed
-  [ ] Review storage bucket policies (photos bucket)
-  [ ] Add HTTPS / custom domain
-  [ ] Test all RLS policies with anon role
-  [ ] Add Supabase backup schedule
-  [ ] Remove admin hash from code before open-source
-
-RLS SQL (run in Supabase SQL Editor):
-================================================================
-  alter table salons enable row level security;
-  alter table barbers enable row level security;
-  alter table services enable row level security;
-  alter table bookings enable row level security;
-  alter table reviews enable row level security;
-  alter table portfolio enable row level security;
-
-  -- Public read for active barbers/salons/services/reviews/portfolio
-  create policy "Public read salons" on salons for select using (status = 'active');
-  create policy "Public read barbers" on barbers for select using (status = 'active');
-  create policy "Public read services" on services for select using (true);
-  create policy "Public read reviews" on reviews for select using (true);
-  create policy "Public read portfolio" on portfolio for select using (true);
-
-  -- Public insert for bookings and reviews (clients book without accounts)
-  create policy "Public insert bookings" on bookings for insert with check (true);
-  create policy "Public insert reviews" on reviews for insert with check (true);
-  create policy "Public read bookings" on bookings for select using (true);
-
-  -- Barbers can update/cancel their own bookings
-  create policy "Barbers update bookings" on bookings for update using (true);
-
-  -- Authenticated barbers can manage their own data
-  create policy "Barbers manage own profile" on barbers for update
-    using (auth.jwt() ->> 'email' = email);
-  create policy "Barbers manage own portfolio" on portfolio for all
-    using (barber_id in (select id from barbers where email = auth.jwt() ->> 'email'));
-  create policy "Barbers manage own services" on services for all
-    using (barber_id in (select id from barbers where email = auth.jwt() ->> 'email'));
-
-  -- Admin: service role bypasses RLS (use only server-side)
-
-DATABASE ADDITIONS NEEDED (run these too):
-================================================================
-  -- Add cancelled_at and notes to bookings
-  alter table bookings add column if not exists cancelled_at timestamp;
-  alter table bookings add column if not exists notes text;
-  alter table bookings add column if not exists total_price numeric default 0;
-
-  -- Notifications table
-  create table if not exists notifications (
-    id uuid default gen_random_uuid() primary key,
-    barber_id uuid references barbers(id) on delete cascade,
-    type text not null, -- 'new_booking' | 'cancellation'
-    message text not null,
-    read boolean default false,
-    created_at timestamp default now()
-  );
-
-  -- Clients table (REQUIRED - run this!)
-  create table if not exists clients (
-    id uuid default gen_random_uuid() primary key,
-    name text not null,
-    phone text not null,
-    email text unique,
-    created_at timestamp default now()
-  );
-
-  -- Blocked dates table (REQUIRED - run this!)
-  create table if not exists blocked_dates (
-    id uuid default gen_random_uuid() primary key,
-    barber_id uuid references barbers(id) on delete cascade,
-    date date not null,
-    created_at timestamp default now(),
-    unique(barber_id, date)
-  );
-
-  -- Favorites table (for logged-in future use, cookies handle anonymous)
-  create table if not exists favorites (
-    id uuid default gen_random_uuid() primary key,
-    client_phone text not null,
-    barber_id uuid references barbers(id) on delete cascade,
-    created_at timestamp default now(),
-    unique(client_phone, barber_id)
-  );
-================================================================
--->
 <html lang="az">
 <head>
 <meta charset="UTF-8">
@@ -133,94 +14,111 @@ DATABASE ADDITIONS NEEDED (run these too):
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
 :root {
-  --green:#1a9e6e;--green-dark:#0d6e4a;--green-light:#e6f7f1;--green-mid:#a8e0cc;
-  --black:#0f0f0f;--white:#fafaf8;--gray:#6b7280;
-  --gray-light:#f4f4f2;--gray-border:#e5e5e3;
+  --green:#1a9e6e;--green-dark:#0d6e4a;--green-light:#e8f5f0;--green-mid:#a8e0cc;
+  --black:#111110;--white:#f9f9f7;--gray:#6b7280;
+  --gray-light:#f2f2f0;--gray-border:#e3e3e0;
   --red:#dc2626;--red-light:#fef2f2;
   --amber:#d97706;--amber-light:#fffbeb;--gold:#f59e0b;
-  --radius:14px;--shadow:0 1px 3px rgba(0,0,0,0.08);--shadow-md:0 4px 16px rgba(0,0,0,0.12);
+  --radius:10px;--radius-lg:16px;
+  --shadow:0 1px 4px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 20px rgba(0,0,0,0.09),0 1px 4px rgba(0,0,0,0.05);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.12);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--white);color:var(--black);min-height:100vh;font-size:15px;line-height:1.6}
 button,input,textarea,select{font-family:'DM Sans',sans-serif}
-.topbar{position:sticky;top:0;z-index:100;background:rgba(250,250,248,0.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--gray-border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between}
-.logo{font-family:'DM Serif Display',serif;font-size:22px;color:var(--black);cursor:pointer;letter-spacing:-0.5px;user-select:none}
+
+/* ── TOPBAR ── */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(249,249,247,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--gray-border);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'DM Serif Display',serif;font-size:21px;color:var(--black);cursor:pointer;letter-spacing:-0.5px;user-select:none}
 .logo span{color:var(--green)}
-.topbar-nav{display:flex;align-items:center;gap:2px}
-.nav-btn{padding:6px 13px;border-radius:8px;border:none;background:transparent;font-size:14px;color:var(--gray);cursor:pointer;transition:all .15s}
+.topbar-nav{display:flex;align-items:center;gap:1px}
+.nav-btn{padding:6px 14px;border-radius:7px;border:none;background:transparent;font-size:13.5px;color:var(--gray);cursor:pointer;transition:all .12s;font-weight:450;letter-spacing:-0.1px}
 .nav-btn:hover{background:var(--gray-light);color:var(--black)}
 .nav-btn.active{background:var(--black);color:white}
-.topbar-right{display:flex;align-items:center;gap:10px}
-.lang-switcher{display:flex;gap:2px;background:var(--gray-light);border-radius:8px;padding:3px}
-.lang-btn{padding:4px 10px;border-radius:6px;border:none;font-size:12px;font-weight:500;cursor:pointer;background:transparent;color:var(--gray);transition:all .15s}
-.lang-btn.active{background:white;color:var(--black);box-shadow:var(--shadow)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.lang-switcher{display:flex;gap:1px;background:var(--gray-light);border-radius:7px;padding:2px}
+.lang-btn{padding:4px 9px;border-radius:5px;border:none;font-size:11.5px;font-weight:500;cursor:pointer;background:transparent;color:var(--gray);transition:all .12s}
+.lang-btn.active{background:white;color:var(--black);box-shadow:0 1px 3px rgba(0,0,0,0.08)}
 .mobile-menu-btn{display:none;background:none;border:none;cursor:pointer;padding:6px}
-.mobile-nav{display:none;position:fixed;inset:0;top:60px;background:white;z-index:99;padding:20px;flex-direction:column;gap:8px;border-top:1px solid var(--gray-border);overflow-y:auto}
+.mobile-nav{display:none;position:fixed;inset:0;top:58px;background:white;z-index:99;padding:16px;flex-direction:column;gap:4px;border-top:1px solid var(--gray-border);overflow-y:auto}
 .mobile-nav.open{display:flex}
-.mobile-nav-btn{padding:12px 16px;border-radius:10px;border:none;font-size:15px;cursor:pointer;background:transparent;color:var(--black);text-align:left}
+.mobile-nav-btn{padding:11px 14px;border-radius:8px;border:none;font-size:15px;cursor:pointer;background:transparent;color:var(--black);text-align:left;font-weight:450}
 .mobile-nav-btn:hover{background:var(--gray-light)}
-.user-pill{display:flex;align-items:center;gap:8px;background:var(--green-light);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:500;color:var(--green-dark);cursor:pointer;border:none}
-.user-pill svg{width:14px;height:14px;stroke:var(--green-dark);fill:none;stroke-width:2}
+.user-pill{display:flex;align-items:center;gap:7px;background:var(--green-light);border-radius:20px;padding:5px 13px;font-size:13px;font-weight:500;color:var(--green-dark);cursor:pointer;border:none}
+.user-pill svg{width:13px;height:13px;stroke:var(--green-dark);fill:none;stroke-width:2}
 .page{display:none}.page.active{display:block}
-.hero{background:var(--black);color:white;padding:80px 24px 56px;text-align:center;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 100%,rgba(26,158,110,0.28) 0%,transparent 70%);pointer-events:none}
-.hero-tag{display:inline-block;background:rgba(26,158,110,0.2);border:1px solid rgba(26,158,110,0.35);color:var(--green-mid);font-size:11px;font-weight:600;padding:5px 14px;border-radius:20px;margin-bottom:20px;letter-spacing:0.08em;text-transform:uppercase}
-.hero h1{font-family:'DM Serif Display',serif;font-size:clamp(36px,6vw,64px);line-height:1.1;margin-bottom:16px;letter-spacing:-1px}
+
+/* ── HERO ── */
+.hero{background:#0e0e0d;color:white;padding:96px 24px 64px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 55% at 50% 110%,rgba(26,158,110,0.22) 0%,transparent 65%);pointer-events:none}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(26,158,110,0.3),transparent)}
+.hero-tag{display:inline-block;background:rgba(26,158,110,0.12);border:1px solid rgba(26,158,110,0.25);color:rgba(168,224,204,0.9);font-size:10.5px;font-weight:600;padding:5px 13px;border-radius:20px;margin-bottom:22px;letter-spacing:0.1em;text-transform:uppercase}
+.hero h1{font-family:'DM Serif Display',serif;font-size:clamp(38px,6vw,68px);line-height:1.06;margin-bottom:18px;letter-spacing:-1.5px;font-weight:400}
 .hero h1 em{color:var(--green-mid);font-style:italic}
-.hero p{font-size:clamp(15px,2vw,17px);color:rgba(255,255,255,0.6);max-width:500px;margin:0 auto 32px;line-height:1.7}
-.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:28px}
-.btn-hero-main{background:var(--green);color:white;border:none;border-radius:12px;padding:14px 32px;font-size:15px;font-weight:500;cursor:pointer;transition:all .2s}
-.btn-hero-main:hover{background:var(--green-dark);transform:translateY(-1px)}
-.btn-hero-sec{background:rgba(255,255,255,0.08);color:white;border:1px solid rgba(255,255,255,0.18);border-radius:12px;padding:14px 32px;font-size:15px;font-weight:500;cursor:pointer;transition:all .2s}
-.btn-hero-sec:hover{background:rgba(255,255,255,0.14)}
+.hero p{font-size:clamp(15px,2vw,17px);color:rgba(255,255,255,0.5);max-width:460px;margin:0 auto 36px;line-height:1.75;font-weight:400}
+.hero-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:0}
+.btn-hero-main{background:var(--green);color:white;border:none;border-radius:9px;padding:13px 28px;font-size:14.5px;font-weight:500;cursor:pointer;transition:all .18s;letter-spacing:-0.1px}
+.btn-hero-main:hover{background:#18926400;background:var(--green-dark);transform:translateY(-1px);box-shadow:0 4px 16px rgba(26,158,110,0.35)}
+.btn-hero-sec{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.12);border-radius:9px;padding:13px 28px;font-size:14.5px;font-weight:500;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:7px}
+.btn-hero-sec:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2)}
 .urgent-wrap{display:flex;justify-content:center}
-.urgent-btn{background:transparent;color:#fbbf24;border:1px solid rgba(251,191,36,0.35);border-radius:12px;padding:11px 24px;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px}
-.urgent-btn:hover{background:rgba(251,191,36,0.08)}
-.urgent-dot{width:7px;height:7px;border-radius:50%;background:#fbbf24;animation:blink 1.4s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.stats-bar{background:var(--green-dark);padding:18px 24px;display:flex;justify-content:center;gap:56px;flex-wrap:wrap}
+.urgent-btn{background:transparent;color:#fbbf24;border:1px solid rgba(251,191,36,0.3);border-radius:9px;padding:10px 22px;font-size:13.5px;font-weight:500;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:8px}
+.urgent-btn:hover{background:rgba(251,191,36,0.07)}
+.urgent-dot{width:6px;height:6px;border-radius:50%;background:#fbbf24;animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* ── STATS ── */
+.stats-bar{background:var(--green-dark);padding:20px 24px;display:flex;justify-content:center;gap:64px;flex-wrap:wrap}
 .stat-item{text-align:center;color:white}
-.stat-num{font-family:'DM Serif Display',serif;font-size:28px}
-.stat-lbl{font-size:12px;color:rgba(255,255,255,0.6);margin-top:2px}
-.features-section{padding:64px 24px;max-width:1100px;margin:0 auto}
-.features-section h2{font-family:'DM Serif Display',serif;font-size:clamp(26px,4vw,38px);text-align:center;margin-bottom:8px;letter-spacing:-0.5px}
-.f-sub{text-align:center;color:var(--gray);margin-bottom:44px;font-size:16px}
-.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px}
-.feat-card{background:var(--white);border:1px solid var(--gray-border);border-radius:var(--radius);padding:22px;transition:border-color .2s,transform .2s}
-.feat-card:hover{border-color:var(--green);transform:translateY(-2px)}
-.feat-icon{width:42px;height:42px;border-radius:10px;background:var(--green-light);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
-.feat-icon svg{width:20px;height:20px;stroke:var(--green);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.feat-card h3{font-size:15px;font-weight:600;margin-bottom:5px}
-.feat-card p{font-size:13px;color:var(--gray);line-height:1.6}
-.page-content{max-width:1100px;margin:0 auto;padding:40px 24px}
-.page-header{margin-bottom:24px}
-.page-header h2{font-family:'DM Serif Display',serif;font-size:30px;letter-spacing:-0.5px;margin-bottom:4px}
-.page-header p{color:var(--gray);font-size:14px}
-.filters-row{display:flex;gap:10px;margin-bottom:22px;align-items:center;flex-wrap:wrap}
-.search-wrap{flex:1;min-width:180px;display:flex;align-items:center;gap:10px;background:white;border:1px solid var(--gray-border);border-radius:10px;padding:10px 14px}
-.search-wrap svg{width:15px;height:15px;stroke:var(--gray);fill:none;stroke-width:2;flex-shrink:0}
-.search-wrap input{border:none;background:transparent;font-size:14px;color:var(--black);outline:none;flex:1}
-.filter-btn{padding:9px 15px;border-radius:10px;border:1px solid var(--gray-border);background:white;font-size:13px;cursor:pointer;color:var(--gray);transition:all .15s;white-space:nowrap}
+.stat-num{font-family:'DM Serif Display',serif;font-size:30px;letter-spacing:-0.5px}
+.stat-lbl{font-size:11px;color:rgba(255,255,255,0.55);margin-top:3px;letter-spacing:0.03em}
+
+/* ── FEATURES ── */
+.features-section{padding:72px 24px;max-width:1080px;margin:0 auto}
+.features-section h2{font-family:'DM Serif Display',serif;font-size:clamp(26px,4vw,40px);text-align:center;margin-bottom:10px;letter-spacing:-0.8px;font-weight:400}
+.f-sub{text-align:center;color:var(--gray);margin-bottom:48px;font-size:15.5px}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--gray-border);border:1px solid var(--gray-border);border-radius:var(--radius-lg);overflow:hidden}
+.feat-card{background:var(--white);padding:26px 24px;transition:background .15s}
+.feat-card:hover{background:#f0faf6}
+.feat-icon{width:38px;height:38px;border-radius:8px;background:var(--green-light);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.feat-icon svg{width:18px;height:18px;stroke:var(--green);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.feat-card h3{font-size:14.5px;font-weight:600;margin-bottom:6px;letter-spacing:-0.2px}
+.feat-card p{font-size:13px;color:var(--gray);line-height:1.65}
+
+/* ── PAGE CONTENT ── */
+.page-content{max-width:1080px;margin:0 auto;padding:40px 24px}
+.page-header{margin-bottom:26px}
+.page-header h2{font-family:'DM Serif Display',serif;font-size:28px;letter-spacing:-0.5px;margin-bottom:5px;font-weight:400}
+.page-header p{color:var(--gray);font-size:13.5px}
+.filters-row{display:flex;gap:8px;margin-bottom:22px;align-items:center;flex-wrap:wrap}
+.search-wrap{flex:1;min-width:180px;display:flex;align-items:center;gap:9px;background:white;border:1px solid var(--gray-border);border-radius:9px;padding:9px 13px;transition:border-color .15s}
+.search-wrap:focus-within{border-color:var(--green)}
+.search-wrap svg{width:14px;height:14px;stroke:var(--gray);fill:none;stroke-width:2;flex-shrink:0}
+.search-wrap input{border:none;background:transparent;font-size:13.5px;color:var(--black);outline:none;flex:1}
+.filter-btn{padding:8px 14px;border-radius:8px;border:1px solid var(--gray-border);background:white;font-size:13px;cursor:pointer;color:var(--gray);transition:all .12s;white-space:nowrap}
 .filter-btn.on{background:var(--black);color:white;border-color:var(--black)}
-.barbers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px}
-.barber-card{background:white;border:1px solid var(--gray-border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:border-color .2s,transform .2s;box-shadow:var(--shadow);position:relative}
-.barber-card:hover{border-color:var(--green);transform:translateY(-2px);box-shadow:var(--shadow-md)}
-.bc-photo{height:130px;background:linear-gradient(135deg,#1a2a1a,#0d3d28);display:flex;align-items:center;justify-content:center;position:relative;font-family:'DM Serif Display',serif;font-size:52px;color:rgba(255,255,255,0.25);overflow:hidden}
+
+/* ── BARBER CARDS ── */
+.barbers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.barber-card{background:white;border:1px solid var(--gray-border);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .2s,border-color .2s;box-shadow:var(--shadow);position:relative}
+.barber-card:hover{border-color:rgba(26,158,110,0.3);transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.bc-photo{height:140px;background:linear-gradient(160deg,#141f14,#0a3020);display:flex;align-items:center;justify-content:center;position:relative;font-family:'DM Serif Display',serif;font-size:54px;color:rgba(255,255,255,0.18);overflow:hidden}
 .bc-photo img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
-.fav-btn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;transition:background .15s}
-.fav-btn:hover{background:rgba(0,0,0,0.7)}
+.fav-btn{position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);border:none;border-radius:50%;width:30px;height:30px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;transition:background .15s}
+.fav-btn:hover{background:rgba(0,0,0,0.65)}
 .fav-btn.active{color:#f59e0b}
-.bc-body{padding:14px}
-.bc-name{font-size:17px;font-weight:600;margin-bottom:3px}
-.bc-salon{font-size:13px;color:var(--green);margin-bottom:3px;display:flex;align-items:center;gap:4px}
-.bc-salon svg{width:11px;height:11px;stroke:var(--green);fill:none;stroke-width:2;flex-shrink:0}
+.bc-body{padding:14px 16px}
+.bc-name{font-size:16px;font-weight:600;margin-bottom:3px;letter-spacing:-0.2px}
+.bc-salon{font-size:12.5px;color:var(--green);margin-bottom:2px;display:flex;align-items:center;gap:4px;font-weight:500}
+.bc-salon svg{width:10px;height:10px;stroke:var(--green);fill:none;stroke-width:2;flex-shrink:0}
 .bc-specialty{font-size:12px;color:var(--gray);margin-bottom:10px}
 .bc-footer{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--gray-border)}
-.bc-rating{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--gray)}
+.bc-rating{display:flex;align-items:center;gap:3px;font-size:12.5px;color:var(--gray)}
 .bc-rating .star{color:var(--gold)}
-.bc-price{font-size:14px;font-weight:600;color:var(--green)}
+.bc-price{font-size:13.5px;font-weight:600;color:var(--green)}
 .map-btn{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--green);cursor:pointer;background:none;border:none;padding:0;text-decoration:none}
-.map-btn svg{width:11px;height:11px;stroke:var(--green);fill:none;stroke-width:2}
+.map-btn svg{width:10px;height:10px;stroke:var(--green);fill:none;stroke-width:2}
 .fav-section{margin-bottom:28px}
 .fav-section h3{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .booking-layout{max-width:660px;margin:0 auto;padding:40px 24px}
@@ -448,6 +346,15 @@ textarea.ff{resize:vertical;min-height:80px}
 .cancel-btn{background:none;border:1px solid #fca5a5;border-radius:6px;padding:3px 8px;font-size:11px;color:var(--red);cursor:pointer;transition:all .15s}
 .cancel-btn:hover{background:var(--red-light)}
 /* Map page */
+.map-list-item{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--gray-border);transition:background .1s}
+.map-list-item:hover{background:var(--gray-light)}
+.map-list-item.active{background:var(--green-light)}
+.map-list-item:last-child{border-bottom:none}
+@media(max-width:640px){
+  #map-sidebar{width:100%!important;height:40vh!important;border-right:none!important;border-bottom:1px solid var(--gray-border)}
+  #page-mappage>div{flex-direction:column!important}
+  #map-container{min-height:300px}
+}
 .map-marker-popup{font-family:'DM Sans',sans-serif;min-width:180px}
 .map-marker-popup h4{font-size:14px;font-weight:600;margin-bottom:4px}
 .map-marker-popup p{font-size:12px;color:#666;margin-bottom:8px}
@@ -744,8 +651,6 @@ textarea.ff{resize:vertical;min-height:80px}
           <div class="profile-meta-row"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span id="pp-hours">—</span></div>
           <div class="profile-meta-row" id="pp-location-row" style="display:none"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><a id="pp-map-link" href="#" target="_blank" rel="noopener" style="color:var(--green)">Xəritədə gör</a></div>
         </div>
-        <!-- Inline map on profile -->
-        <div id="pp-map-container" style="display:none;width:100%;height:200px;border-radius:12px;overflow:hidden;margin-bottom:16px;border:1px solid var(--gray-border)"></div>
         <div class="profile-about" id="pp-about" style="display:none"></div>
         <div style="display:flex;gap:10px;margin-top:8px">
           <button class="book-now-btn" onclick="bookFromProfile()" style="flex:1">Sifariş et</button>
@@ -753,6 +658,8 @@ textarea.ff{resize:vertical;min-height:80px}
         </div>
       </div>
     </div>
+    <!-- Inline map — full width below hero -->
+    <div id="pp-map-container" style="display:none;width:100%;height:240px;border-radius:14px;overflow:hidden;margin-bottom:28px;border:1px solid var(--gray-border);box-shadow:var(--shadow)"></div>
     <div class="portfolio-section">
       <h2>Portfolio</h2>
       <div class="portfolio-grid" id="pp-portfolio"><div class="portfolio-empty">Hələ portfolio şəkli yoxdur</div></div>
@@ -1093,16 +1000,25 @@ textarea.ff{resize:vertical;min-height:80px}
 
 <!-- MAP PAGE -->
 <div class="page" id="page-mappage">
-  <div style="position:relative;width:100%;height:calc(100vh - 60px)">
-    <div id="map-container" style="width:100%;height:100%;background:var(--gray-light)">
-      <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;color:var(--gray)">
-        <div class="loading">Xəritə yüklənir...</div>
+  <div style="display:flex;height:calc(100vh - 60px);overflow:hidden">
+    <!-- Left sidebar -->
+    <div id="map-sidebar" style="width:300px;flex-shrink:0;background:white;border-right:1px solid var(--gray-border);display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--gray-border)">
+        <div style="font-size:16px;font-weight:600;margin-bottom:10px">Bakıdakı bərbərlər</div>
+        <div class="search-wrap" style="margin:0">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--gray)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="map-search" placeholder="Bərbər axtar..." oninput="filterMapList(this.value)" style="border:none;background:transparent;font-size:13px;outline:none;flex:1">
+        </div>
+      </div>
+      <div id="map-barbers-list" style="overflow-y:auto;flex:1">
+        <div class="loading">Yüklənir...</div>
       </div>
     </div>
-    <!-- Map barber cards overlay -->
-    <div id="map-barber-panel" style="position:absolute;bottom:0;left:0;right:0;background:white;border-radius:20px 20px 0 0;padding:16px;max-height:40vh;overflow-y:auto;box-shadow:0 -4px 20px rgba(0,0,0,0.12);display:none">
-      <div style="width:40px;height:4px;background:var(--gray-border);border-radius:2px;margin:0 auto 14px"></div>
-      <div id="map-barber-card"></div>
+    <!-- Map -->
+    <div id="map-container" style="flex:1;position:relative">
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--gray)">
+        <div class="loading">Xəritə yüklənir...</div>
+      </div>
     </div>
   </div>
 </div>
@@ -3373,72 +3289,121 @@ async function saveTelegramId() {
 
 // ── MAP ──
 let mapInstance = null;
-let mapMarkers = [];
+let mapAllBarbers = [];
+let mapGeocodedBarbers = [];
 
 async function loadMapPage() {
-  // Load barbers with locations
-  const { data:barbers } = await db.from('barbers')
-    .select('id,name,location,photo_url,specialty,rating,review_count,salons(name)')
-    .eq('status','active')
-    .not('location','is',null);
-
-  // Initialize map centered on Baku
-  await new Promise(r => setTimeout(r, 100)); // wait for DOM
+  await new Promise(r => setTimeout(r, 80));
   const container = document.getElementById('map-container');
   if (!container) return;
-
-  if (mapInstance) {
-    mapInstance.remove();
-    mapInstance = null;
-  }
-
+  if (mapInstance) { mapInstance.remove(); mapInstance = null; }
   container.innerHTML = '';
-  mapInstance = L.map('map-container', { zoomControl: true }).setView([40.4093, 49.8671], 12);
 
+  // Init map
+  mapInstance = L.map('map-container', { zoomControl: true }).setView([40.4093, 49.8671], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
     maxZoom: 19
   }).addTo(mapInstance);
 
-  // Custom green marker
-  const greenIcon = L.divIcon({
-    html: `<div style="background:#1a9e6e;width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    className: ''
-  });
+  // Load barbers
+  const { data:barbers } = await db.from('barbers')
+    .select('id,name,location,photo_url,specialty,rating,review_count,salons(name,city)')
+    .eq('status','active');
 
   if (!barbers || barbers.length === 0) return;
+  mapAllBarbers = barbers;
+  renderMapSidebar(barbers);
 
-  mapMarkers = [];
-  const bounds = [];
+  // Geocode barbers with locations
+  mapGeocodedBarbers = [];
+  const withLocation = barbers.filter(b => b.location);
 
-  barbers.forEach(b => {
-    // Try to geocode from location string using Nominatim
-    const searchAddr = (b.location || '') + ', Baku, Azerbaijan';
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchAddr)}&limit=1`)
-      .then(r => r.json())
-      .then(results => {
-        if (!results || results.length === 0) return;
-        const lat = parseFloat(results[0].lat);
-        const lng = parseFloat(results[0].lon);
-        const marker = L.marker([lat, lng], {icon: greenIcon}).addTo(mapInstance);
-        const rating = b.rating > 0 ? b.rating.toFixed(1) + '★' : 'Yeni';
-        marker.bindPopup(`
-          <div class="map-marker-popup">
-            <h4>${sanitize(b.name)}</h4>
-            <p>${sanitize(b.salons?.name||'Müstəqil')} · ${sanitize(b.specialty||'')}<br>
-            ${rating} (${b.review_count||0} rəy)</p>
-            <button class="map-popup-btn" onclick="closeMapPopupAndOpen('${b.id}')">Profili gör →</button>
-          </div>`, {maxWidth: 220});
-        mapMarkers.push({marker, barber: b});
-        bounds.push([lat, lng]);
-        if (bounds.length > 1) {
-          mapInstance.fitBounds(bounds, {padding: [40, 40]});
-        }
-      })
-      .catch(() => {});
+  for (const b of withLocation) {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(b.location+', Baku, Azerbaijan')}&limit=1`,
+        { headers: { 'Accept-Language': 'az' } }
+      );
+      const results = await res.json();
+      if (!results || results.length === 0) continue;
+      const lat = parseFloat(results[0].lat);
+      const lng = parseFloat(results[0].lon);
+      addMapMarker(b, lat, lng);
+      mapGeocodedBarbers.push({...b, lat, lng});
+      await new Promise(r => setTimeout(r, 300)); // respect rate limit
+    } catch(e) {}
+  }
+  if (mapGeocodedBarbers.length > 0) {
+    const bounds = mapGeocodedBarbers.map(b => [b.lat, b.lng]);
+    mapInstance.fitBounds(bounds, {padding:[50,50]});
+  }
+}
+
+function addMapMarker(b, lat, lng) {
+  const icon = L.divIcon({
+    html: `<div style="background:#1a9e6e;width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25)"></div>`,
+    iconSize:[28,28], iconAnchor:[14,28], className:''
   });
+  const rating = b.rating > 0 ? b.rating.toFixed(1)+'★' : 'Yeni';
+  const marker = L.marker([lat,lng],{icon}).addTo(mapInstance);
+  marker.bindPopup(`
+    <div style="font-family:'DM Sans',sans-serif;min-width:170px;padding:2px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:3px">${sanitize(b.name)}</div>
+      <div style="font-size:12px;color:#666;margin-bottom:6px">${sanitize(b.salons?.name||'Müstəqil')} · ${rating}</div>
+      <button onclick="closeMapPopupAndOpen('${b.id}')" style="background:#1a9e6e;color:white;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;width:100%">Profili gör →</button>
+    </div>`, {maxWidth:210, closeButton:false});
+  // Highlight sidebar item on marker click
+  marker.on('click', () => {
+    document.querySelectorAll('.map-list-item').forEach(el=>el.classList.remove('active'));
+    const item = document.getElementById('mli-'+b.id);
+    if (item) { item.classList.add('active'); item.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  });
+}
+
+function renderMapSidebar(barbers) {
+  const el = document.getElementById('map-barbers-list');
+  if (!el) return;
+  if (barbers.length === 0) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--gray);font-size:13px">Tapılmadı</div>';
+    return;
+  }
+  el.innerHTML = barbers.map(b => {
+    const rating = b.rating > 0 ? b.rating.toFixed(1)+'★' : 'Yeni';
+    const photo = b.photo_url
+      ? `<img src="${b.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`
+      : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a2a1a,#0d3d28);border-radius:10px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.3);font-size:18px;font-family:'DM Serif Display',serif">${sanitize(b.name[0]||'?')}</div>`;
+    return `<div class="map-list-item" id="mli-${b.id}" onclick="mapSelectBarber('${b.id}')">
+      <div style="width:44px;height:44px;flex-shrink:0;overflow:hidden;border-radius:10px">${photo}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sanitize(b.name)}</div>
+        <div style="font-size:11px;color:var(--gray)">${sanitize(b.salons?.name||'Müstəqil')}</div>
+        <div style="font-size:11px;color:var(--green);font-weight:500">${rating} · ${b.location?sanitize(b.location.split(',')[0]):'—'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterMapList(q) {
+  if (!mapAllBarbers.length) return;
+  const filtered = q
+    ? mapAllBarbers.filter(b => b.name.toLowerCase().includes(q.toLowerCase()) || (b.salons?.name||'').toLowerCase().includes(q.toLowerCase()))
+    : mapAllBarbers;
+  renderMapSidebar(filtered);
+}
+
+function mapSelectBarber(barberId) {
+  // Highlight in list
+  document.querySelectorAll('.map-list-item').forEach(el=>el.classList.remove('active'));
+  const item = document.getElementById('mli-'+barberId);
+  if (item) item.classList.add('active');
+  // Find geocoded marker and open popup
+  const geocoded = mapGeocodedBarbers.find(b=>b.id===barberId);
+  if (geocoded && mapInstance) {
+    mapInstance.setView([geocoded.lat, geocoded.lng], 15, {animate:true});
+  }
+  // Or just open profile
+  openBarberProfile(barberId);
 }
 
 function closeMapPopupAndOpen(barberId) {
