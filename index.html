@@ -1025,6 +1025,14 @@ textarea.ff{resize:vertical;min-height:80px}
     </div>
 
     <div style="margin-top:20px"><div class="dash-card">
+      <h3>📍 Mənim yerləşdiyim yer</h3>
+      <p style="font-size:13px;color:var(--gray);margin-bottom:14px;line-height:1.6">Profilinizdəki ünvan əsasında müştərilər sizi xəritədə görür.</p>
+      <div id="dash-location-map" style="height:220px;border-radius:12px;overflow:hidden;border:1px solid var(--gray-border);background:var(--gray-light);display:flex;align-items:center;justify-content:center">
+        <div class="loading">Xəritə yüklənir...</div>
+      </div>
+    </div></div>
+
+    <div style="margin-top:20px"><div class="dash-card">
       <h3>📱 Telegram bildirişləri</h3>
       <p style="font-size:13px;color:var(--gray);margin-bottom:14px;line-height:1.6">
         Telegram ID-nizi daxil edin — yeni sifariş və ləğvetmələr birbaşa sizə gəlsin.<br>
@@ -2700,6 +2708,7 @@ async function loadDashboard() {
   await loadDashServices();
   await loadClientHistory();
   loadScheduleEditor();
+  loadDashBarberMap(barber);
   // Load existing Telegram ID into field
   const tgField = document.getElementById('dash-telegram-id');
   const tgStatus = document.getElementById('dash-telegram-status');
@@ -3628,6 +3637,49 @@ function navToBarberOnMap() {
 function closeMapPopupAndOpen(barberId) {
   if (mapInstance) mapInstance.closePopup();
   openBarberProfile(barberId);
+}
+
+async function loadDashBarberMap(barber) {
+  const container = document.getElementById('dash-location-map');
+  if (!container) return;
+  if (!barber.location) {
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--gray);font-size:13px">Ünvan qeydiyyatda göstərilməyib.</div>';
+    return;
+  }
+  container.innerHTML = '';
+  if (window._dashMap) { window._dashMap.remove(); window._dashMap = null; }
+  // Geocode using same multi-format approach
+  const formats = [
+    barber.location + ', Baku, Azerbaijan',
+    barber.location + ', Bakı, Azərbaycan',
+    barber.location + ', Baku',
+    barber.location,
+  ];
+  let coords = null;
+  for (const fmt of formats) {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fmt)}&limit=1&countrycodes=az`,{headers:{'Accept-Language':'az,en'}});
+      const results = await res.json();
+      if (results && results.length > 0) { coords = {lat:parseFloat(results[0].lat),lng:parseFloat(results[0].lon)}; break; }
+      await new Promise(r=>setTimeout(r,200));
+    } catch(e){}
+  }
+  if (!coords) { container.innerHTML='<div style="padding:20px;text-align:center;color:var(--gray);font-size:13px">Ünvan xəritədə tapılmadı. Ünvanı dəqiqləşdirin.</div>'; return; }
+  window._dashMap = L.map(container, {zoomControl:true, dragging:true, scrollWheelZoom:false}).setView([coords.lat, coords.lng], 16);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution:'© <a href="https://carto.com">CARTO</a>', subdomains:'abcd', maxZoom:19
+  }).addTo(window._dashMap);
+  const icon = L.divIcon({
+    html: `<div style="width:38px;height:38px;background:#1a9e6e;border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(26,158,110,0.45);display:flex;align-items:center;justify-content:center;overflow:hidden">
+      ${barber.photo_url
+        ? `<img src="${barber.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+        : `<span style="color:white;font-size:15px;font-weight:600">${(barber.name||'?')[0]}</span>`}
+    </div>`,
+    iconSize:[38,38], iconAnchor:[19,19], className:''
+  });
+  L.marker([coords.lat, coords.lng], {icon}).addTo(window._dashMap)
+    .bindPopup(`<b>${sanitize(barber.name)}</b><br><span style="font-size:11px;color:#888">${sanitize(barber.location)}</span>`)
+    .openPopup();
 }
 
 // ── UTILS ──
