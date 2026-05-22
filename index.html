@@ -3474,9 +3474,23 @@ async function loadMapPage() {
 
   for (const b of withLocation) {
     try {
-      const q = encodeURIComponent(b.location + ', Baku, Azerbaijan');
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=1`);
-      const results = await res.json();
+      // Try multiple formats to improve geocoding success
+      const formats = [
+        b.location + ', Baku, Azerbaijan',
+        b.location + ', Bakı, Azərbaycan',
+        b.location + ', Baku',
+      ];
+      let results = [];
+      for (const fmt of formats) {
+        const q = encodeURIComponent(fmt);
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=1&countrycodes=az`,
+          { headers: { 'Accept-Language': 'az,en' } }
+        );
+        results = await res.json();
+        if (results && results.length > 0) break;
+        await new Promise(r => setTimeout(r, 200));
+      }
       if (!results || results.length === 0) continue;
       const lat = parseFloat(results[0].lat);
       const lng = parseFloat(results[0].lon);
@@ -3572,6 +3586,29 @@ function zoomToBarberById(barberId) {
   if (geocoded) {
     mapInstance.flyTo([geocoded.lat, geocoded.lng], 16, {animate:true, duration:0.8});
     setTimeout(() => { if (geocoded.marker) geocoded.marker.openPopup(); }, 900);
+    // Highlight in sidebar
+    document.querySelectorAll('.map-list-item').forEach(el=>el.classList.remove('active'));
+    const item = document.getElementById('mli-'+barberId);
+    if (item) { item.classList.add('active'); item.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  } else {
+    // Not geocoded yet — retry every second for up to 15 seconds
+    let attempts = 0;
+    const retry = setInterval(() => {
+      attempts++;
+      const found = mapGeocodedBarbers.find(b=>b.id===barberId);
+      if (found) {
+        clearInterval(retry);
+        mapInstance.flyTo([found.lat, found.lng], 16, {animate:true, duration:0.8});
+        setTimeout(() => { if (found.marker) found.marker.openPopup(); }, 900);
+        document.querySelectorAll('.map-list-item').forEach(el=>el.classList.remove('active'));
+        const item = document.getElementById('mli-'+barberId);
+        if (item) { item.classList.add('active'); item.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+      } else if (attempts >= 15) {
+        clearInterval(retry);
+        // Show toast that address couldn't be found
+        toast('Bərbərin ünvanı xəritədə tapılmadı');
+      }
+    }, 1000);
   }
 }
 
@@ -3579,6 +3616,13 @@ function navToBarberOnMap() {
   if (!currentProfileBarber) return;
   mapPendingBarber = currentProfileBarber.id;
   nav('mappage');
+  // Show indicator in sidebar after page loads
+  setTimeout(() => {
+    const el = document.getElementById('map-barbers-list');
+    if (el && mapAllBarbers.length === 0) {
+      el.innerHTML = '<div style="padding:16px;text-align:center;font-size:13px;color:var(--gray)">🔍 Bərbər axtarılır...</div>';
+    }
+  }, 200);
 }
 
 function closeMapPopupAndOpen(barberId) {
