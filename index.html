@@ -1,3 +1,122 @@
+<!DOCTYPE html>
+<!--
+================================================================
+KAVRO.CLUB — COMPLETE PROJECT FILE v3.0.0
+================================================================
+CHANGES FROM v2.0.0:
+  [FIX] Page refresh state persistence via sessionStorage
+  [FIX] Duplicate submitReview() function removed
+  [FIX] Midnight booking bug fixed (local date used everywhere)
+  [FIX] Dashboard labels bookings as Passed / Upcoming
+  [FIX] Rank badges removed from barber cards
+  [FIX] Language order changed to AZ RU EN
+  [FIX] "For Barbers" nav hidden when barber is logged in
+  [FIX] "Top Rated Barbers" feature card removed
+  [NEW] Telegram notifications for new bookings & cancellations
+  [NEW] Favorites via localStorage (star icon, no login needed)
+  [NEW] Client self-cancellation from booking lookup
+  [NEW] Privacy Policy page
+  [NEW] Terms of Use page
+  [NEW] PWA manifest + service worker registration
+  [NEW] Full security checklist in comments
+  [NEW] Booking status labels (Passed / Upcoming / Cancelled)
+  [NEW] Multi-service summary on confirm step
+  [NEW] "For Barbers" removed from nav when logged in as barber
+
+TELEGRAM:
+  Bot Token: 8645466274:AAF_9hBTJwOdMyMIO1OFf8vQPEbct_0WcB0
+  Chat ID:   7568815452
+
+PRE-LAUNCH SECURITY CHECKLIST:
+  [ ] Enable RLS on all tables in Supabase (SQL below)
+  [ ] Rotate anon key if exposed in public repo
+  [ ] Set up email confirmation in Supabase Auth settings
+  [ ] Add rate limiting on Supabase edge functions if needed
+  [ ] Review storage bucket policies (photos bucket)
+  [ ] Add HTTPS / custom domain
+  [ ] Test all RLS policies with anon role
+  [ ] Add Supabase backup schedule
+  [ ] Remove admin hash from code before open-source
+
+RLS SQL (run in Supabase SQL Editor):
+================================================================
+  alter table salons enable row level security;
+  alter table barbers enable row level security;
+  alter table services enable row level security;
+  alter table bookings enable row level security;
+  alter table reviews enable row level security;
+  alter table portfolio enable row level security;
+
+  -- Public read for active barbers/salons/services/reviews/portfolio
+  create policy "Public read salons" on salons for select using (status = 'active');
+  create policy "Public read barbers" on barbers for select using (status = 'active');
+  create policy "Public read services" on services for select using (true);
+  create policy "Public read reviews" on reviews for select using (true);
+  create policy "Public read portfolio" on portfolio for select using (true);
+
+  -- Public insert for bookings and reviews (clients book without accounts)
+  create policy "Public insert bookings" on bookings for insert with check (true);
+  create policy "Public insert reviews" on reviews for insert with check (true);
+  create policy "Public read bookings" on bookings for select using (true);
+
+  -- Barbers can update/cancel their own bookings
+  create policy "Barbers update bookings" on bookings for update using (true);
+
+  -- Authenticated barbers can manage their own data
+  create policy "Barbers manage own profile" on barbers for update
+    using (auth.jwt() ->> 'email' = email);
+  create policy "Barbers manage own portfolio" on portfolio for all
+    using (barber_id in (select id from barbers where email = auth.jwt() ->> 'email'));
+  create policy "Barbers manage own services" on services for all
+    using (barber_id in (select id from barbers where email = auth.jwt() ->> 'email'));
+
+  -- Admin: service role bypasses RLS (use only server-side)
+
+DATABASE ADDITIONS NEEDED (run these too):
+================================================================
+  -- Add cancelled_at and notes to bookings
+  alter table bookings add column if not exists cancelled_at timestamp;
+  alter table bookings add column if not exists notes text;
+  alter table bookings add column if not exists total_price numeric default 0;
+
+  -- Notifications table
+  create table if not exists notifications (
+    id uuid default gen_random_uuid() primary key,
+    barber_id uuid references barbers(id) on delete cascade,
+    type text not null, -- 'new_booking' | 'cancellation'
+    message text not null,
+    read boolean default false,
+    created_at timestamp default now()
+  );
+
+  -- Clients table (REQUIRED - run this!)
+  create table if not exists clients (
+    id uuid default gen_random_uuid() primary key,
+    name text not null,
+    phone text not null,
+    email text unique,
+    created_at timestamp default now()
+  );
+
+  -- Blocked dates table (REQUIRED - run this!)
+  create table if not exists blocked_dates (
+    id uuid default gen_random_uuid() primary key,
+    barber_id uuid references barbers(id) on delete cascade,
+    date date not null,
+    created_at timestamp default now(),
+    unique(barber_id, date)
+  );
+
+  -- Favorites table (for logged-in future use, cookies handle anonymous)
+  create table if not exists favorites (
+    id uuid default gen_random_uuid() primary key,
+    client_phone text not null,
+    barber_id uuid references barbers(id) on delete cascade,
+    created_at timestamp default now(),
+    unique(client_phone, barber_id)
+  );
+================================================================
+-->
 <html lang="az">
 <head>
 <meta charset="UTF-8">
@@ -566,7 +685,7 @@ textarea.ff{resize:vertical;min-height:80px}
     <p id="t-hero-p">Yaxınlıqdakı bərbərləri tap, uyğun vaxt seç və gəl.</p>
     <div class="hero-btns">
       <button class="btn-hero-main" onclick="nav('barbers')" id="t-browse-btn">Bərbərlərə bax</button>
-      <button class="btn-hero-sec" onclick="nav('mappage')" id="t-map-btn" style="display:flex;align-items:center;gap:8px">
+      <button class="btn-hero-sec" onclick="nav('mappage')" id="t-barber-btn" style="display:flex;align-items:center;gap:8px">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
         Xəritədə gör
       </button>
@@ -892,6 +1011,14 @@ textarea.ff{resize:vertical;min-height:80px}
         </div>
       </div>
     </div>
+
+    <div style="margin-top:20px" id="dash-map-card" style="display:none"><div class="dash-card">
+      <h3>📍 Mənim yerləşdiyim yer</h3>
+      <p style="font-size:13px;color:var(--gray);margin-bottom:14px;line-height:1.6">Profilinizdəki ünvan əsasında müştərilər sizi xəritədə görür.</p>
+      <div id="dash-location-map" style="height:220px;border-radius:12px;overflow:hidden;border:1px solid var(--gray-border)">
+        <div class="loading" style="height:100%;display:flex;align-items:center;justify-content:center">Xəritə yüklənir...</div>
+      </div>
+    </div></div>
 
     <div style="margin-top:20px"><div class="dash-card">
       <h3>📱 Telegram bildirişləri</h3>
@@ -3300,9 +3427,10 @@ async function loadMapPage() {
   container.innerHTML = '';
 
   // Init map
-  mapInstance = L.map('map-container', { zoomControl: true }).setView([40.4093, 49.8671], 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+  mapInstance = L.map('map-container', { zoomControl: true, preferCanvas: true }).setView([40.4093, 49.8671], 12);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter_lite/{z}/{x}/{y}{r}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
     maxZoom: 19
   }).addTo(mapInstance);
 
