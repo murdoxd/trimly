@@ -344,7 +344,9 @@ textarea.ff{resize:vertical;min-height:80px}
 .dash-greeting h2{font-family:'DM Serif Display',serif;font-size:26px;letter-spacing:-0.5px}
 .status-badge{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;background:var(--green-light);color:var(--green-dark)}
 .status-badge.inactive{background:var(--amber-light);color:var(--amber)}
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+@media(max-width:800px){.metrics{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:500px){.metrics{grid-template-columns:repeat(2,1fr)}}
 .metric{background:white;border:1px solid var(--gray-border);border-radius:var(--radius);padding:16px}
 .metric-label{font-size:11px;color:var(--gray);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em}
 .metric-val{font-family:'DM Serif Display',serif;font-size:26px}
@@ -924,11 +926,20 @@ textarea.ff{resize:vertical;min-height:80px}
       </div>
     </div>
     <div class="metrics">
-      <div class="metric"><div class="metric-label" id="t-m1">Bu günün sifarişləri</div><div class="metric-val" id="dash-today">—</div></div>
-      <div class="metric"><div class="metric-label" id="t-m2">Cəmi sifarişlər</div><div class="metric-val" id="dash-total">—</div></div>
-      <div class="metric"><div class="metric-label" id="t-m3">Gəlir (AZN)</div><div class="metric-val" id="dash-revenue">—</div></div>
-      <div class="metric"><div class="metric-label" id="t-m4">Reytinq</div><div class="metric-val" id="dash-rating">—</div></div>
+      <div class="metric"><div class="metric-label" id="t-m1">Bu gün</div><div class="metric-val" id="dash-today">—</div><div style="font-size:11px;color:var(--gray);margin-top:2px" id="dash-today-rev">— AZN</div></div>
+      <div class="metric"><div class="metric-label">Bu həftə</div><div class="metric-val" id="dash-week">—</div><div style="font-size:11px;color:var(--gray);margin-top:2px" id="dash-week-rev">— AZN</div></div>
+      <div class="metric"><div class="metric-label">Bu ay</div><div class="metric-val" id="dash-month">—</div><div style="font-size:11px;color:var(--gray);margin-top:2px" id="dash-month-rev">— AZN</div></div>
+      <div class="metric"><div class="metric-label" id="t-m2">Müştərilər</div><div class="metric-val" id="dash-total">—</div><div style="font-size:11px;color:var(--gray);margin-top:2px" id="dash-new-clients">— yeni</div></div>
+      <div class="metric"><div class="metric-label" id="t-m4">Reytinq</div><div class="metric-val" id="dash-rating">—</div><div style="font-size:11px;color:var(--green);margin-top:2px" id="dash-rev-count">— rəy</div></div>
     </div>
+    <!-- Revenue chart -->
+    <div style="margin-bottom:18px"><div class="dash-card" style="padding:16px 18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3 style="margin:0">📊 Son 7 günün gəliri</h3>
+        <span id="dash-chart-total" style="font-size:13px;font-weight:600;color:var(--green)"></span>
+      </div>
+      <div id="dash-revenue-chart" style="display:flex;align-items:flex-end;gap:6px;height:80px"></div>
+    </div></div>
     <div class="dash-grid">
       <div class="dash-card"><h3 id="t-dash-today">Bu günün görüşləri</h3><div id="dash-appts"><div class="loading">Yüklənir...</div></div></div>
       <div class="dash-card">
@@ -1046,6 +1057,17 @@ textarea.ff{resize:vertical;min-height:80px}
         <button class="btn-main green" style="width:auto;padding:11px 20px;white-space:nowrap" onclick="saveTelegramId()">Saxla</button>
       </div>
       <div id="dash-telegram-status" style="font-size:12px;color:var(--gray);margin-top:8px"></div>
+    </div></div>
+
+    <div style="margin-top:20px"><div class="dash-card">
+      <h3>💬 WhatsApp bildirişləri</h3>
+      <p style="font-size:13px;color:var(--gray);margin-bottom:12px;line-height:1.6">
+        Yeni sifariş gəldikdə profilinizdəki telefon nömrəsinə WhatsApp mesajı göndərilir.
+        Telefon nömrəniz qeydiyyatdakı nömrədir.
+      </p>
+      <div id="dash-wa-status" style="font-size:13px;padding:10px 14px;border-radius:10px;background:var(--gray-light);display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">⏳</span> <span>Yüklənir...</span>
+      </div>
     </div></div>
   </div>
 </div>
@@ -1197,6 +1219,14 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const TELEGRAM_TOKEN = '8645466274:AAF_9hBTJwOdMyMIO1OFf8vQPEbct_0WcB0';
 const TELEGRAM_CHAT_ID = '7568815452';
 const ADMIN_SECRET = '#admin-kavro2026';
+
+// ── WHATSAPP (Green API) ──────────────────────────────────────────────────────
+// 1. Register free at https://green-api.com  (500 msgs/month free)
+// 2. Create an instance, scan QR with your WhatsApp (use a dedicated number)
+// 3. Paste your Instance ID and Token below
+const WA_INSTANCE = '7107629788';   // e.g. '1101234567'
+const WA_TOKEN    = 'fd1a639093544c9c9557c81ca7f17851375e835fd46c4df790';   // e.g. 'abc123...'
+const WA_ENABLED  = WA_INSTANCE !== '' && WA_TOKEN !== '';
 const WHATSAPP_1 = '+994 50 342 48 80';
 const WHATSAPP_2 = '+994 51 300 42 19';
 const SUBSCRIPTION_PRICE = '25';
@@ -1252,6 +1282,89 @@ function buildBookingNotification(type, data) {
       `⏰ Vaxt: ${data.time}\n\n` +
       `Slot artıq boşdur.`;
   }
+}
+
+// ── WHATSAPP NOTIFICATIONS (Green API) ──
+// Formats an AZ phone number → Green API chatId format
+// Accepts: +994501234567 / 0501234567 / 501234567 / 994501234567
+function formatWaChatId(phone) {
+  if (!phone) return null;
+  let digits = phone.replace(/\D/g, '');
+  // Strip leading zero (local format)
+  if (digits.startsWith('0') && digits.length === 10) digits = '994' + digits.slice(1);
+  // Add country code if missing
+  if (!digits.startsWith('994') && digits.length === 9) digits = '994' + digits;
+  if (digits.length < 11) return null;
+  return digits + '@c.us';
+}
+
+async function sendWhatsApp(phone, message) {
+  if (!WA_ENABLED) return;
+  const chatId = formatWaChatId(phone);
+  if (!chatId) return;
+  try {
+    await fetch(`https://api.green-api.com/waInstance${WA_INSTANCE}/sendMessage/${WA_TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId, message })
+    });
+  } catch(e) { console.log('WhatsApp error:', e); }
+}
+
+function buildWaMessage(type, data) {
+  const line = '─────────────────';
+  if (type === 'new') {
+    // Format date nicely: "2026-05-24" → "24 May 2026"
+    const months = ['','Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'];
+    let dateParts = (data.date||'').split('-');
+    const niceDate = dateParts.length===3
+      ? `${parseInt(dateParts[2])} ${months[parseInt(dateParts[1])]} ${dateParts[0]}`
+      : data.date;
+    return (
+      `🟢 *YENİ SİFARİŞ — Kavro*\n` +
+      `${line}\n` +
+      `👤 *Müştəri:* ${data.clientName}\n` +
+      `📞 *Telefon:* ${data.clientPhone}\n` +
+      `${line}\n` +
+      `✂️ *Xidmət:* ${data.services}\n` +
+      `📅 *Tarix:* ${niceDate}\n` +
+      `🕐 *Saat:* ${data.time}\n` +
+      `💰 *Məbləğ:* ${data.totalPrice} AZN\n` +
+      `${line}\n` +
+      `_Kavro.club vasitəsilə sifariş edildi_`
+    );
+  } else if (type === 'cancel') {
+    const months = ['','Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr'];
+    let dateParts = (data.date||'').split('-');
+    const niceDate = dateParts.length===3
+      ? `${parseInt(dateParts[2])} ${months[parseInt(dateParts[1])]} ${dateParts[0]}`
+      : data.date;
+    return (
+      `❌ *SİFARİŞ LƏĞV EDİLDİ — Kavro*\n` +
+      `${line}\n` +
+      `👤 *Müştəri:* ${data.clientName}\n` +
+      `📞 *Telefon:* ${data.clientPhone}\n` +
+      `${line}\n` +
+      `📅 *Tarix:* ${niceDate}\n` +
+      `🕐 *Saat:* ${data.time}\n` +
+      `${line}\n` +
+      `_Bu vaxt slotu artıq boşdur._\n` +
+      `_Kavro.club_`
+    );
+  } else if (type === 'reminder') {
+    return (
+      `🔔 *XATIRLATMA — Kavro*\n` +
+      `${line}\n` +
+      `Yarım saat sonra sifarişiniz var!\n` +
+      `${line}\n` +
+      `✂️ *Bərbər:* ${data.barberName}\n` +
+      `📍 *Ünvan:* ${data.location||'—'}\n` +
+      `🕐 *Saat:* ${data.time}\n` +
+      `${line}\n` +
+      `_Kavro.club_`
+    );
+  }
+  return '';
 }
 
 // ── RATE LIMITING ──
@@ -2330,10 +2443,9 @@ async function confirmBooking() {
   }));
   const { error } = await db.from('bookings').insert(bookingRows);
   if (error) { toast('Xəta. Yenidən cəhd edin.'); if(btn){btn.disabled=false;btn.textContent='Sifarişi təsdiqlə';} return; }
-  // Send Telegram notification to barber's own Telegram (or admin fallback)
-  const { data:barberForNotif } = await db.from('barbers').select('telegram_chat_id,name').eq('id',bState.barberId).single();
-  const notifChatId = barberForNotif?.telegram_chat_id || TELEGRAM_CHAT_ID;
-  const msg = buildBookingNotification('new', {
+  // Fetch barber info for notifications (include phone for WhatsApp)
+  const { data:barberForNotif } = await db.from('barbers').select('telegram_chat_id,name,phone').eq('id',bState.barberId).single();
+  const notifPayload = {
     clientName: name,
     clientPhone: phone,
     barberName: bState.barber,
@@ -2341,11 +2453,16 @@ async function confirmBooking() {
     date: bookingDate,
     time: bState.time,
     totalPrice: totalPrice
-  });
-  // Always notify admin, and also notify barber if they have their own telegram
+  };
+  // Telegram
+  const msg = buildBookingNotification('new', notifPayload);
   await sendTelegramTo(TELEGRAM_CHAT_ID, msg);
   if (barberForNotif?.telegram_chat_id && barberForNotif.telegram_chat_id !== TELEGRAM_CHAT_ID) {
     await sendTelegramTo(barberForNotif.telegram_chat_id, msg);
+  }
+  // WhatsApp → barber
+  if (barberForNotif?.phone) {
+    await sendWhatsApp(barberForNotif.phone, buildWaMessage('new', notifPayload));
   }
   bState.step=3; renderBooking();
 }
@@ -2398,20 +2515,23 @@ async function doCancelBooking() {
   toast('Sifariş ləğv edildi.');
   // Send Telegram cancel notification
   const b = booking || cancelBookingData;
-  const msg = buildBookingNotification('cancel', {
+  const cancelPayload = {
     clientName: b.client_name || '—',
     clientPhone: b.client_phone || cancelBookingData?.clientPhone || '—',
     barberName: b.barbers?.name || cancelBookingData?.barberName || '—',
     date: b.date || cancelBookingData?.date || '—',
     time: b.time || cancelBookingData?.time || '—'
-  });
-  // Send to barber's telegram or admin fallback
-  const { data:barberNotif } = await db.from('barbers').select('telegram_chat_id').eq('id', booking?.barber_id||'').maybeSingle();
-  const cancelChatId = barberNotif?.telegram_chat_id || TELEGRAM_CHAT_ID;
-  // Always notify admin, and also notify barber if they have telegram
+  };
+  const msg = buildBookingNotification('cancel', cancelPayload);
+  // Fetch barber for notifications (include phone)
+  const { data:barberNotif } = await db.from('barbers').select('telegram_chat_id,phone').eq('id', booking?.barber_id||'').maybeSingle();
   await sendTelegramTo(TELEGRAM_CHAT_ID, msg);
   if (barberNotif?.telegram_chat_id && barberNotif.telegram_chat_id !== TELEGRAM_CHAT_ID) {
     await sendTelegramTo(barberNotif.telegram_chat_id, msg);
+  }
+  // WhatsApp → barber
+  if (barberNotif?.phone) {
+    await sendWhatsApp(barberNotif.phone, buildWaMessage('cancel', cancelPayload));
   }
   // Refresh if on dashboard
   if (document.getElementById('page-dashboard').classList.contains('active')) loadDashboard();
@@ -2641,6 +2761,34 @@ async function submitRegistration() {
 }
 
 // ── DASHBOARD ──
+function renderRevenueChart(confirmed, today) {
+  const el = document.getElementById('dash-revenue-chart');
+  const totalEl = document.getElementById('dash-chart-total');
+  if (!el) return;
+  const days = [];
+  const dayNames = ['B.','B.e','Ç.a','Ç.','C.a','C.','Ş.'];
+  for (let i=6; i>=0; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const str = d.toISOString().split('T')[0];
+    const dayLabel = i===0 ? 'Bu gün' : dayNames[d.getDay()];
+    const bookings = confirmed.filter(b=>b.date===str);
+    const rev = bookings.reduce((s,b)=>s+(b.total_price||b.services?.price||0),0);
+    days.push({str, label:dayLabel, rev, count:bookings.length, isToday:i===0});
+  }
+  const maxRev = Math.max(...days.map(d=>d.rev), 1);
+  const total7 = days.reduce((s,d)=>s+d.rev,0);
+  if (totalEl) totalEl.textContent = total7 + ' AZN / həftə';
+  el.innerHTML = days.map(d=>{
+    const pct = Math.max((d.rev/maxRev)*100, d.rev>0?8:2);
+    const isToday = d.isToday;
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+      ${d.rev>0?`<div style="font-size:10px;font-weight:600;color:${isToday?'var(--green)':'var(--gray)'}">${d.rev}</div>`:'<div style="font-size:10px;color:transparent">0</div>'}
+      <div style="width:100%;background:${isToday?'var(--green)':'var(--gray-border)'};border-radius:4px 4px 0 0;height:${pct}%;min-height:${d.rev>0?'8px':'2px'};transition:height .3s;position:relative" title="${d.label}: ${d.rev} AZN, ${d.count} sifariş"></div>
+      <div style="font-size:10px;color:${isToday?'var(--green)':'var(--gray)'};font-weight:${isToday?'600':'400'};white-space:nowrap">${d.label}</div>
+    </div>`;
+  }).join('');
+}
+
 async function loadDashboard() {
   if (!currentUser) { nav('login'); return; }
   const { data:barber } = await db.from('barbers').select('*,salons(name)').eq('email',currentUser.email).maybeSingle();
@@ -2652,63 +2800,103 @@ async function loadDashboard() {
   document.getElementById('dash-status-badge').textContent=barber.status==='active'?'Aktiv':'Gözləyir — bizimlə əlaqə saxlayın';
   document.getElementById('dash-status-badge').className='status-badge'+(barber.status!=='active'?' inactive':'');
   document.getElementById('dash-rating').textContent=barber.rating?barber.rating.toFixed(1):'—';
-  // Use local date to avoid midnight bug
   const today = getTodayLocal();
   const now = new Date();
   const nowTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  // Today's bookings — use local date range to handle midnight crossing
-  const {data:todayB}=await db.from('bookings').select('*,services(name,price)').eq('barber_id',barber.id).eq('date',today).neq('status','cancelled').order('time');
-  const {data:allB}=await db.from('bookings').select('*,services(name,price)').eq('barber_id',barber.id).order('date',{ascending:false}).limit(100);
-  const revenue=(allB||[]).filter(b=>b.status==='confirmed').reduce((s,b)=>s+(b.total_price||b.services?.price||0),0);
-  document.getElementById('dash-today').textContent=todayB?.length||0;
-  document.getElementById('dash-total').textContent=(allB||[]).filter(b=>b.status==='confirmed').length;
-  document.getElementById('dash-revenue').textContent=revenue;
-  const apptEl=document.getElementById('dash-appts');
-  apptEl.innerHTML=todayB?.length?todayB.map(b=>{
+
+  // Fetch all bookings for analytics (no limit)
+  const {data:todayB} = await db.from('bookings').select('*,services(name,price)').eq('barber_id',barber.id).eq('date',today).neq('status','cancelled').order('time');
+  const {data:allB}   = await db.from('bookings').select('*,services(name,price)').eq('barber_id',barber.id).order('date',{ascending:false});
+
+  const confirmed = (allB||[]).filter(b=>b.status==='confirmed');
+
+  // Date helpers
+  const toDate = s => new Date(s+'T00:00:00');
+  const weekAgo  = new Date(now); weekAgo.setDate(weekAgo.getDate()-7);
+  const monthAgo = new Date(now); monthAgo.setDate(monthAgo.getDate()-30);
+
+  const todayConf   = confirmed.filter(b=>b.date===today);
+  const weekConf    = confirmed.filter(b=>toDate(b.date)>=weekAgo);
+  const monthConf   = confirmed.filter(b=>toDate(b.date)>=monthAgo);
+  const price       = b => b.total_price || b.services?.price || 0;
+  const todayRev    = todayConf.reduce((s,b)=>s+price(b),0);
+  const weekRev     = weekConf.reduce((s,b)=>s+price(b),0);
+  const monthRev    = monthConf.reduce((s,b)=>s+price(b),0);
+
+  // Unique clients
+  const allPhones   = new Set(confirmed.map(b=>b.client_phone));
+  const thisMonPhones = new Set(monthConf.map(b=>b.client_phone));
+  // New clients = phones that appear only in last 30 days
+  const oldPhones   = new Set(confirmed.filter(b=>toDate(b.date)<monthAgo).map(b=>b.client_phone));
+  const newClients  = [...thisMonPhones].filter(p=>!oldPhones.has(p)).length;
+
+  // Populate metrics
+  document.getElementById('dash-today').textContent     = todayConf.length;
+  document.getElementById('dash-today-rev').textContent  = todayRev + ' AZN';
+  document.getElementById('dash-week').textContent      = weekConf.length;
+  document.getElementById('dash-week-rev').textContent   = weekRev + ' AZN';
+  document.getElementById('dash-month').textContent     = monthConf.length;
+  document.getElementById('dash-month-rev').textContent  = monthRev + ' AZN';
+  document.getElementById('dash-total').textContent     = allPhones.size;
+  document.getElementById('dash-new-clients').textContent= newClients + ' yeni (30g)';
+  document.getElementById('dash-rating').textContent    = barber.rating?barber.rating.toFixed(1):'—';
+
+  // Review count
+  const {data:revCount} = await db.from('reviews').select('id',{count:'exact',head:true}).eq('barber_id',barber.id);
+  document.getElementById('dash-rev-count').textContent = (revCount||0) + ' rəy';
+
+  // Revenue bar chart (last 7 days)
+  renderRevenueChart(confirmed, today);
+
+  // Today's appointments
+  const apptEl = document.getElementById('dash-appts');
+  apptEl.innerHTML = todayB?.length ? todayB.map(b => {
     const isPast = b.time <= nowTime;
-    const label = isPast ? 'Keçdi' : 'Gəlir';
-    const labelClass = isPast ? 'passed' : 'upcoming';
     return `<div class="appt-row">
-      <div><div class="appt-client">${sanitize(b.client_name)}</div><div class="appt-time">${b.time} · ${sanitize(b.services?.name||'—')} · ${sanitize(b.client_phone)}</div></div>
+      <div><div class="appt-client">${sanitize(b.client_name)}</div><div class="appt-time">${b.time} · ${sanitize(b.services?.name||'—')} · <a href="tel:${sanitize(b.client_phone)}" style="color:var(--green);text-decoration:none">${sanitize(b.client_phone)}</a></div></div>
       <div class="appt-actions">
-        <span class="ab ${labelClass}">${label}</span>
-        <span class="ab" style="background:var(--gray-light);color:var(--gray)">${(b.services?.price||0)+' AZN'}</span>
+        <span class="ab ${isPast?'passed':'upcoming'}">${isPast?'Keçdi':'Gəlir'}</span>
+        <span class="ab" style="background:var(--gray-light);color:var(--gray)">${price(b)} AZN</span>
         ${!isPast?`<button class="cancel-btn" onclick="initCancelBooking('${b.id}')">Ləğv et</button>`:''}
       </div>
     </div>`;
-  }).join(''):'<div class="empty-state">Bu gün görüş yoxdur</div>';
+  }).join('') : '<div class="empty-state">Bu gün görüş yoxdur</div>';
+
   // Slot grid
-  const bookedToday=(todayB||[]).map(b=>b.time);
+  const bookedToday = (todayB||[]).map(b=>b.time);
   const barberTimes = generateTimes(barber.start_time||'10:00', barber.end_time||'22:00', 30);
-  document.getElementById('dash-slots').innerHTML=barberTimes.slice(0,12).map(t=>`<div class="slot-mini ${bookedToday.includes(t)?'taken':'free'}">${t}</div>`).join('');
+  document.getElementById('dash-slots').innerHTML = barberTimes.slice(0,12).map(t=>`<div class="slot-mini ${bookedToday.includes(t)?'taken':'free'}">${t}</div>`).join('');
+
   // Reviews
-  const {data:revs}=await db.from('reviews').select('*').eq('barber_id',barber.id).order('created_at',{ascending:false}).limit(5);
-  const revEl=document.getElementById('dash-reviews');
-  revEl.innerHTML=revs?.length?revs.map(r=>`<div class="review-item">
+  const {data:revs} = await db.from('reviews').select('*').eq('barber_id',barber.id).order('created_at',{ascending:false}).limit(5);
+  const revEl = document.getElementById('dash-reviews');
+  revEl.innerHTML = revs?.length ? revs.map(r=>`<div class="review-item">
     <div class="review-header"><span class="review-author">${sanitize(r.client_name)}</span><span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span></div>
     ${r.comment?`<div class="review-text">${sanitize(r.comment,300)}</div>`:''}
     <div style="font-size:11px;color:#bbb;margin-top:3px">${r.created_at?.split('T')[0]||''}</div>
-  </div>`).join(''):'<div class="empty-state">Hələ rəy yoxdur</div>';
-  // All bookings with Passed/Upcoming labels
-  const allEl=document.getElementById('dash-all-bookings');
-  allEl.innerHTML=allB?.length?allB.map(b=>{
-    const isPast = b.date < today || (b.date === today && b.time <= nowTime);
+  </div>`).join('') : '<div class="empty-state">Hələ rəy yoxdur</div>';
+
+  // All bookings
+  const allEl = document.getElementById('dash-all-bookings');
+  allEl.innerHTML = allB?.length ? allB.map(b=>{
+    const isPast = b.date < today || (b.date===today && b.time<=nowTime);
     const statusLabel = b.status==='cancelled' ? 'Ləğv edildi' : isPast ? 'Keçdi' : 'Gəlir';
     const statusClass = b.status==='cancelled' ? 'cancelled' : isPast ? 'passed' : 'upcoming';
     return `<div class="appt-row">
       <div><div class="appt-client">${sanitize(b.client_name)}</div><div class="appt-time">${b.date} · ${b.time} · ${sanitize(b.client_phone)}</div></div>
       <div style="display:flex;gap:6px;align-items:center">
         <span class="ab ${statusClass}">${statusLabel}</span>
-        <span class="ab" style="background:var(--gray-light);color:var(--gray)">${(b.services?.price||0)+' AZN'}</span>
+        <span class="ab" style="background:var(--gray-light);color:var(--gray)">${price(b)} AZN</span>
       </div>
     </div>`;
-  }).join(''):'<div class="empty-state">Hələ sifariş yoxdur</div>';
+  }).join('') : '<div class="empty-state">Hələ sifariş yoxdur</div>';
   await loadDashPortfolio();
   await loadBlockedDates();
   await loadDashServices();
   await loadClientHistory();
   loadScheduleEditor();
   loadDashBarberMap(barber);
+  loadWaStatus(barber);
   // Load existing Telegram ID into field
   const tgField = document.getElementById('dash-telegram-id');
   const tgStatus = document.getElementById('dash-telegram-status');
@@ -2821,31 +3009,26 @@ async function loadProfileMap(barber) {
   const container = document.getElementById('pp-map-container');
   if (!container || !barber.location) return;
   container.style.display = 'block';
-  container.innerHTML = '';
-  // Remove old map if exists
+  container.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--gray);font-size:13px">Xəritə yüklənir...</div>';
   if (window._profileMap) { window._profileMap.remove(); window._profileMap = null; }
-  const searchAddr = barber.location + ', Baku, Azerbaijan';
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchAddr)}&limit=1`);
-    const results = await res.json();
-    if (!results || results.length === 0) { container.style.display='none'; return; }
-    const lat = parseFloat(results[0].lat);
-    const lng = parseFloat(results[0].lon);
-    window._profileMap = L.map(container, {zoomControl:false, dragging:true, scrollWheelZoom:false}).setView([lat,lng], 16);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution:'© CARTO', subdomains:'abcd', maxZoom:19
-    }).addTo(window._profileMap);
-    const icon = L.divIcon({
-      html: `<div style="width:38px;height:38px;background:#1a9e6e;border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(26,158,110,0.4);display:flex;align-items:center;justify-content:center;overflow:hidden">
-        ${barber.photo_url
-          ? `<img src="${barber.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-          : `<span style="color:white;font-size:15px;font-weight:600">${(barber.name||'?')[0]}</span>`
-        }
-      </div>`,
-      iconSize:[38,38], iconAnchor:[19,19], className:''
-    });
-    L.marker([lat,lng],{icon}).addTo(window._profileMap).bindPopup(`<b>${sanitize(barber.name)}</b><br><span style="font-size:11px;color:#888">${sanitize(barber.location||'')}</span>`).openPopup();
-  } catch(e) { container.style.display='none'; }
+  const coords = await smartGeocode(barber.location);
+  container.innerHTML = '';
+  window._profileMap = L.map(container, {zoomControl: !coords.approximate, dragging:true, scrollWheelZoom:false}).setView([coords.lat, coords.lng], coords.approximate ? 12 : 16);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution:'© CARTO', subdomains:'abcd', maxZoom:19
+  }).addTo(window._profileMap);
+  const icon = L.divIcon({
+    html: `<div style="width:38px;height:38px;background:${coords.approximate?'#6b7280':'#1a9e6e'};border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(26,158,110,0.4);display:flex;align-items:center;justify-content:center;overflow:hidden">
+      ${barber.photo_url
+        ? `<img src="${barber.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+        : `<span style="color:white;font-size:15px;font-weight:600">${(barber.name||'?')[0]}</span>`}
+    </div>`,
+    iconSize:[38,38], iconAnchor:[19,19], className:''
+  });
+  const popupNote = coords.approximate ? '<br><span style="font-size:10px;color:#f59e0b">⚠️ Təxmini məkan</span>' : '';
+  L.marker([coords.lat, coords.lng], {icon}).addTo(window._profileMap)
+    .bindPopup(`<b>${sanitize(barber.name)}</b><br><span style="font-size:11px;color:#888">${sanitize(barber.location||'')}</span>${popupNote}`)
+    .openPopup();
 }
 
 async function loadPortfolio(barberId) {
@@ -3482,31 +3665,10 @@ async function loadMapPage() {
   const withLocation = barbers.filter(b => b.location);
 
   for (const b of withLocation) {
-    try {
-      // Try multiple formats to improve geocoding success
-      const formats = [
-        b.location + ', Baku, Azerbaijan',
-        b.location + ', Bakı, Azərbaycan',
-        b.location + ', Baku',
-      ];
-      let results = [];
-      for (const fmt of formats) {
-        const q = encodeURIComponent(fmt);
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=1&countrycodes=az`,
-          { headers: { 'Accept-Language': 'az,en' } }
-        );
-        results = await res.json();
-        if (results && results.length > 0) break;
-        await new Promise(r => setTimeout(r, 200));
-      }
-      if (!results || results.length === 0) continue;
-      const lat = parseFloat(results[0].lat);
-      const lng = parseFloat(results[0].lon);
-      const marker = addMapMarker(b, lat, lng);
-      mapGeocodedBarbers.push({...b, lat, lng, marker});
-      await new Promise(r => setTimeout(r, 350));
-    } catch(e) {}
+    const coords = await smartGeocode(b.location);
+    const marker = addMapMarker(b, coords.lat, coords.lng, coords.approximate);
+    mapGeocodedBarbers.push({...b, lat: coords.lat, lng: coords.lng, marker, approximate: coords.approximate});
+    await new Promise(r => setTimeout(r, 300));
   }
 
   // If opened from barber profile - zoom to that barber
@@ -3519,9 +3681,59 @@ async function loadMapPage() {
   }
 }
 
-function addMapMarker(b, lat, lng) {
+// Smart geocoder: tries many formats, ALWAYS returns a location (approximate if needed)
+let _approxOffset = 0;
+async function smartGeocode(rawLocation) {
+  if (!rawLocation) return { lat: 40.4093, lng: 49.8671, approximate: true };
+  const loc = rawLocation.trim();
+  const queries = [
+    loc + ' küçəsi, Bakı, Azərbaycan',
+    loc + ' küç., Bakı',
+    loc + ' prospekti, Bakı',
+    loc + ' street, Baku, Azerbaijan',
+    loc + ', Baku, Azerbaijan',
+    loc + ', Bakı, Azərbaycan',
+    loc + ', Baku',
+    loc + ', Azerbaijan',
+    loc,
+    loc.replace(/\s+\d+$/, '') + ', Baku, Azerbaijan',
+    loc.replace(/\s+\d+$/, '') + ', Bakı',
+  ];
+  for (const q of queries) {
+    try {
+      // Try with AZ country filter first
+      let r = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&countrycodes=az`,
+        { headers: { 'Accept-Language': 'az,ru,en' } }
+      );
+      let d = await r.json();
+      if (d && d.length > 0) return { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon), approximate: false };
+      await new Promise(x => setTimeout(x, 150));
+      // Retry without country filter
+      r = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`,
+        { headers: { 'Accept-Language': 'az,ru,en' } }
+      );
+      d = await r.json();
+      if (d && d.length > 0) {
+        const lat = parseFloat(d[0].lat), lng = parseFloat(d[0].lon);
+        // Must be within ~80km of Baku center
+        if (Math.abs(lat - 40.4) < 0.7 && Math.abs(lng - 49.85) < 0.7)
+          return { lat, lng, approximate: false };
+      }
+      await new Promise(x => setTimeout(x, 150));
+    } catch(e) {}
+  }
+  // All failed — scatter around Baku center so markers don't stack
+  _approxOffset++;
+  const angle = (_approxOffset * 137.5) * Math.PI / 180;
+  const radius = 0.003 + (_approxOffset % 5) * 0.0015;
+  return { lat: 40.4093 + Math.cos(angle)*radius, lng: 49.8671 + Math.sin(angle)*radius, approximate: true };
+}
+
+function addMapMarker(b, lat, lng, approximate) {
   const icon = L.divIcon({
-    html: `<div style="width:36px;height:36px;background:#1a9e6e;border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(26,158,110,0.45);display:flex;align-items:center;justify-content:center;overflow:hidden">
+    html: `<div style="width:36px;height:36px;background:${approximate?'#6b7280':'#1a9e6e'};border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(${approximate?'0,0,0':'26,158,110'},0.45);display:flex;align-items:center;justify-content:center;overflow:hidden">
       ${b.photo_url
         ? `<img src="${b.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
         : `<span style="color:white;font-size:14px;font-weight:600;font-family:DM Serif Display,serif">${(b.name||'?')[0]}</span>`
@@ -3530,12 +3742,14 @@ function addMapMarker(b, lat, lng) {
     iconSize:[36,36], iconAnchor:[18,18], className:''
   });
   const rating = b.rating > 0 ? b.rating.toFixed(1)+'★' : 'Yeni';
+  const approxNote = approximate ? '<div style="font-size:11px;color:#f59e0b;margin-bottom:6px">⚠️ Təxmini məkan — ünvan dəqiqləşdirilmədi</div>' : '';
   const marker = L.marker([lat,lng],{icon}).addTo(mapInstance);
   marker.bindPopup(`
     <div style="font-family:'DM Sans',sans-serif;min-width:180px;padding:4px 2px">
       <div style="font-size:14px;font-weight:600;margin-bottom:2px">${sanitize(b.name)}</div>
       <div style="font-size:12px;color:#888;margin-bottom:2px">${sanitize(b.salons?.name||'Müstəqil')}</div>
-      <div style="font-size:12px;color:#1a9e6e;margin-bottom:8px">${rating}</div>
+      <div style="font-size:12px;color:#1a9e6e;margin-bottom:6px">${rating}</div>
+      ${approxNote}
       <button onclick="closeMapPopupAndOpen('${b.id}')" style="background:#1a9e6e;color:white;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer;width:100%">Profili gör →</button>
     </div>`, {maxWidth:220, closeButton:false});
   marker.on('click', () => {
@@ -3593,29 +3807,27 @@ function zoomToBarberById(barberId) {
   if (!mapInstance) return;
   const geocoded = mapGeocodedBarbers.find(b=>b.id===barberId);
   if (geocoded) {
-    mapInstance.flyTo([geocoded.lat, geocoded.lng], 16, {animate:true, duration:0.8});
+    mapInstance.flyTo([geocoded.lat, geocoded.lng], geocoded.approximate ? 13 : 16, {animate:true, duration:0.8});
     setTimeout(() => { if (geocoded.marker) geocoded.marker.openPopup(); }, 900);
-    // Highlight in sidebar
     document.querySelectorAll('.map-list-item').forEach(el=>el.classList.remove('active'));
     const item = document.getElementById('mli-'+barberId);
     if (item) { item.classList.add('active'); item.scrollIntoView({behavior:'smooth',block:'nearest'}); }
   } else {
-    // Not geocoded yet — retry every second for up to 15 seconds
+    // Still geocoding — wait up to 20 seconds
     let attempts = 0;
     const retry = setInterval(() => {
       attempts++;
       const found = mapGeocodedBarbers.find(b=>b.id===barberId);
       if (found) {
         clearInterval(retry);
-        mapInstance.flyTo([found.lat, found.lng], 16, {animate:true, duration:0.8});
+        mapInstance.flyTo([found.lat, found.lng], found.approximate ? 13 : 16, {animate:true, duration:0.8});
         setTimeout(() => { if (found.marker) found.marker.openPopup(); }, 900);
         document.querySelectorAll('.map-list-item').forEach(el=>el.classList.remove('active'));
         const item = document.getElementById('mli-'+barberId);
         if (item) { item.classList.add('active'); item.scrollIntoView({behavior:'smooth',block:'nearest'}); }
-      } else if (attempts >= 15) {
+      } else if (attempts >= 20) {
         clearInterval(retry);
-        // Show toast that address couldn't be found
-        toast('Bərbərin ünvanı xəritədə tapılmadı');
+        toast('Bərbər xəritədə yüklənir, bir az gözləyin...');
       }
     }, 1000);
   }
@@ -3637,6 +3849,21 @@ function navToBarberOnMap() {
 function closeMapPopupAndOpen(barberId) {
   if (mapInstance) mapInstance.closePopup();
   openBarberProfile(barberId);
+}
+
+function loadWaStatus(barber) {
+  const el = document.getElementById('dash-wa-status');
+  if (!el) return;
+  if (!WA_ENABLED) {
+    el.innerHTML = `<span style="font-size:18px">🔴</span> <span>WhatsApp qoşulmayıb — admin tərəfindən qurulmalıdır</span>`;
+    return;
+  }
+  if (barber.phone) {
+    el.style.background = '#f0fdf4';
+    el.innerHTML = `<span style="font-size:18px">🟢</span> <span>Aktiv — <b>${sanitize(barber.phone)}</b> nömrəsinə bildirişlər göndərilir</span>`;
+  } else {
+    el.innerHTML = `<span style="font-size:18px">🟡</span> <span>Telefon nömrəsi qeydiyyatda yoxdur — admin ilə əlaqə saxlayın</span>`;
+  }
 }
 
 async function loadDashBarberMap(barber) {
