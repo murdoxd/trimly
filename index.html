@@ -824,35 +824,9 @@ textarea.ff{resize:vertical;min-height:80px}
 </div>
 
 <!-- REGISTER -->
-<div class="page" id="page-register">
-  <div class="reg-layout">
-    <div class="page-header"><h2 id="t-reg-h">Bərbər qeydiyyatı</h2><p id="t-reg-p">Profilinizi yaradın və sifarişlər almağa başlayın</p></div>
-    <div class="warn-banner">
-      <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <p id="t-reg-warn">Profiliniz ödəniş təsdiqləndikdən sonra aktiv olacaq.</p>
-    </div>
-    <div class="reg-steps">
-      <button class="rsb active" id="rs-profile" onclick="regTab('profile')">Profil</button>
-      <button class="rsb" id="rs-schedule" onclick="regTab('schedule')">Cədvəl</button>
-      <button class="rsb" id="rs-services" onclick="regTab('services')">Xidmətlər</button>
-      <button class="rsb" id="rs-payment" onclick="regTab('payment')">Ödəniş</button>
-    </div>
-    <div id="reg-content"></div>
-  </div>
-</div>
+<!-- page-register removed: barberportal handles registration -->
 
-<!-- BARBER LOGIN -->
-<div class="page" id="page-login">
-  <div class="login-layout">
-    <h2 class="login-title" id="t-login-h">Bərbər girişi</h2>
-    <p class="login-sub" id="t-login-p">İdarə panelinə daxil olun</p>
-    <div class="login-tabs">
-      <button class="ltab active" id="lt-login" onclick="showLoginTab('login')">Daxil ol</button>
-      <button class="ltab" id="lt-signup" onclick="showLoginTab('signup')">Hesab yarat</button>
-    </div>
-    <div id="login-content"></div>
-  </div>
-</div>
+<!-- page-login removed: barberportal handles login -->
 
 <!-- CLIENT LOGIN PAGE -->
 <div class="page" id="page-clientlogin">
@@ -1224,8 +1198,8 @@ const ADMIN_SECRET = '#admin-kavro2026';
 // 1. Register free at https://green-api.com  (500 msgs/month free)
 // 2. Create an instance, scan QR with your WhatsApp (use a dedicated number)
 // 3. Paste your Instance ID and Token below
-const WA_INSTANCE = '7107629788';   // e.g. '1101234567'
-const WA_TOKEN    = 'fd1a639093544c9c9557c81ca7f17851375e835fd46c4df790';   // e.g. 'abc123...'
+const WA_INSTANCE = '7107629788';
+const WA_TOKEN    = 'fd1a639093544c9c9557c81ca7f17851375e835fd46c4df790';
 const WA_ENABLED  = WA_INSTANCE !== '' && WA_TOKEN !== '';
 const WHATSAPP_1 = '+994 50 342 48 80';
 const WHATSAPP_2 = '+994 51 300 42 19';
@@ -2009,13 +1983,13 @@ function showLoggedInUI() {
   if (!currentUser) return;
   const name = currentBarberProfile?.name || currentUser.email.split('@')[0];
   document.getElementById('nb-login').style.display='none';
-  document.getElementById('nb-register').style.display='none';
-  document.getElementById('mob-register-btn').style.display='none';
+  const nbReg = document.getElementById('nb-register');
+  if (nbReg) nbReg.style.display='none';
   document.getElementById('nb-dashboard').style.display='inline-flex';
   document.getElementById('user-pill-btn').style.display='flex';
   document.getElementById('user-pill-name').textContent=name;
-  document.getElementById('mob-login-btn').style.display='none';
   document.getElementById('mob-register-btn').style.display='none';
+  document.getElementById('mob-login-btn').style.display='none';
   document.getElementById('mob-dash-btn').style.display='block';
   document.getElementById('mob-logout-btn').style.display='block';
   // Hide client login from nav when barber is logged in
@@ -2027,7 +2001,8 @@ function showLoggedInUI() {
 
 function showLoggedOutUI() {
   document.getElementById('nb-login').style.display='inline-flex';
-  document.getElementById('nb-register').style.display='none';
+  const nbRegO = document.getElementById('nb-register');
+  if (nbRegO) nbRegO.style.display='none';
   document.getElementById('mob-register-btn').style.display='block';
   document.getElementById('nb-dashboard').style.display='none';
   document.getElementById('user-pill-btn').style.display='none';
@@ -2111,7 +2086,7 @@ function showLoginTab(tab) {
 
 async function signIn() {
   const rl = checkRateLimit('login');
-  if (rl.blocked) { return; }
+  if (rl.blocked) { toast('Çox cəhd edildi. Bir az gözləyin.'); return; }
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
   if (!email||!pass) { toast('Bütün sahələri doldurun'); return; }
@@ -2123,7 +2098,7 @@ async function signIn() {
 
 async function signUp() {
   const rl = checkRateLimit('signup');
-  if (rl.blocked) { return; }
+  if (rl.blocked) { toast('Çox cəhd edildi. Bir az gözləyin.'); return; }
   const email = document.getElementById('signup-email').value.trim();
   const pass = document.getElementById('signup-pass').value;
   if (!email||!pass) { toast('Bütün sahələri doldurun'); return; }
@@ -2156,10 +2131,11 @@ async function findUrgent() {
     const bookedTimes=(booked||[]).map(b=>b.time);
     const available=ALL_TIMES.filter(t=>t>currentTime&&!bookedTimes.includes(t));
     if (available.length>0) {
+      _barberCache[barber.id] = barber;
       r.innerHTML=`<div class="urgent-result"><h4>${sanitize(barber.name)}</h4><p>${sanitize(barber.salons?.name||'Müstəqil')} · Növbəti slot: <strong>${available[0]}</strong> bu gün</p></div>`;
       document.getElementById('urgent-modal-btns').innerHTML=`
         <button class="btn-sec" onclick="closeModal('urgent-modal')">Ləğv et</button>
-        <button class="btn-main green" style="width:auto;padding:11px 22px" onclick="closeModal('urgent-modal');startBookingBarber('${barber.id}','${sanitize(barber.name)}','${sanitize(barber.salons?.name||'')}')">Sifariş et ${available[0]}</button>`;
+        <button class="btn-main green" style="width:auto;padding:11px 22px" onclick="closeModal('urgent-modal');startBookingFromCache('${barber.id}')">Sifariş et ${available[0]}</button>`;
       return;
     }
   }
@@ -2192,7 +2168,11 @@ function setFilter(f,btn) {
 }
 function filterBarbers() { renderBarbers(); }
 
+// Store barber data by ID to avoid sanitize() breaking onclick with apostrophes
+const _barberCache = {};
+
 function buildBarberCard(b) {
+  _barberCache[b.id] = b; // cache for safe onclick access
   const tr=T[currentLang];
   const minPrice=b.services?.length?Math.min(...b.services.map(s=>s.price)):null;
   const rating=b.rating||0;
@@ -2244,6 +2224,12 @@ function renderBarbers() {
 }
 
 // ── BOOKING ──
+function startBookingFromCache(barberId) {
+  const b = _barberCache[barberId];
+  if (!b) { toast('Xəta: bərbər məlumatı tapılmadı'); return; }
+  startBookingBarber(barberId, b.name, b.salons?.name || '');
+}
+
 async function startBookingBarber(barberId,barberName,salonName) {
   bState={barberId,barber:barberName,salonName,services:[],time:null,date:0,step:0};
   saveNavState('booking', {barberId, barberName, salonName});
@@ -2265,6 +2251,10 @@ function renderStepBar() {
   }).join('');
 }
 
+const _serviceCache = {};
+const _bookingCache = {};
+const _clientCache = {};
+
 async function renderBooking() {
   renderStepBar();
   const c=document.getElementById('booking-content');
@@ -2285,9 +2275,10 @@ async function renderBooking() {
     const continueBtnHtml = `<button id="svc-continue" class="btn-main ${continueDisabled?'':'green'}" style="margin-top:16px" ${continueDisabled?'disabled':''} onclick="if(bState.services.length>0){bState.step=1;renderBooking();}">${contLabel}</button>`;
     c.innerHTML=`<div class="slabel">${sanitize(bState.barber)} — ${tr['service-label']||'Xidmət seçin'}</div>`+
       summaryHtml+
-      services.map(sv=>{
+      services.forEach(sv=>{ _serviceCache[sv.id] = sv; });
+    services.map(sv=>{
         const isSelected = bState.services.some(s=>s.id===sv.id);
-        return `<div class="svc-opt ${isSelected?'sel':''}" data-id="${sv.id}" onclick="toggleService('${sv.id}','${sanitize(sv.name)}',${sv.price})">
+        return `<div class="svc-opt ${isSelected?'sel':''}" data-id="${sv.id}" onclick="toggleService('${sv.id}',this)">
           <div><div class="svc-nm">${sanitize(sv.name)}</div></div>
           <div style="display:flex;align-items:center;gap:10px">
             <div class="svc-pr">${sv.price} AZN</div>
@@ -2376,7 +2367,17 @@ async function renderBooking() {
   }
 }
 
-function toggleService(id,name,price){
+function toggleService(id, nameOrBtn){
+  // nameOrBtn can be a string (legacy) or a DOM element (new safe path)
+  let name, price;
+  if (typeof nameOrBtn === 'string') {
+    name = nameOrBtn;
+    price = 0; // legacy fallback
+  } else {
+    const cached = _serviceCache[id];
+    name = cached?.name || id;
+    price = cached?.price || 0;
+  }
   const idx = bState.services.findIndex(s=>s.id===id);
   if(idx>-1){ bState.services.splice(idx,1); }
   else { bState.services.push({id,name,price}); }
@@ -2420,7 +2421,7 @@ function pickTime(t){bState.time=t;bState.step=2;renderBooking();}
 
 async function confirmBooking() {
   const rl=checkRateLimit('booking');
-  if (rl.blocked) { return; }
+  if (rl.blocked) { toast(`Çox sifariş cəhdi. ${rl.waitMins} dəqiqə gözləyin.`); return; }
   const name=sanitize(document.getElementById('cn')?.value.trim()||'',100);
   const phone=sanitizePhone(document.getElementById('cp')?.value.trim()||'');
   if (!name||!phone) { toast('Ad və telefon nömrənizi daxil edin'); return; }
@@ -2483,6 +2484,7 @@ async function lookupBookings() {
     el.innerHTML = '<div class="empty-state">Bu nömrə ilə sifariş tapılmadı.</div>';
     return;
   }
+  bookings.forEach(b => { _bookingCache[b.id] = b; if (b.barbers?.id) _barberCache[b.barbers.id] = b.barbers; });
   el.innerHTML = bookings.map(b => {
     const isPast = b.date < today;
     const statusLabel = b.status === 'cancelled' ? 'Ləğv edildi' : isPast ? 'Keçdi' : 'Gələcək';
@@ -2495,7 +2497,7 @@ async function lookupBookings() {
       </div>
       <div class="appt-actions">
         <span class="ab ${statusClass}">${statusLabel}</span>
-        ${canCancel?`<button class="cancel-btn" onclick="clientCancelBooking('${b.id}','${sanitize(b.barbers?.name||'')}','${b.date}','${b.time}','${phone}')">Ləğv et</button>`:''}
+        ${canCancel?`<button class="cancel-btn" onclick="clientCancelBookingById('${b.id}')">Ləğv et</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -2728,9 +2730,9 @@ function toggleDay(d,btn) {
 
 async function submitRegistration() {
   const rl=checkRateLimit('register');
-  if (rl.blocked) { return; }
+  if (rl.blocked) { toast(`Çox cəhd. ${rl.waitMins} dəqiqə gözləyin.`); return; }
   if (!regForm.name||!regForm.salon) { toast('Əvvəlcə profilinizi tamamlayın'); regTab('profile'); return; }
-  const btn=document.querySelector('#page-register .btn-main.green');
+  const btn = document.querySelector('#barber-portal-content .btn-main.green') || document.querySelector('#reg-content .btn-main.green') || document.querySelector('#page-register .btn-main.green');
   if(btn){btn.disabled=true;btn.textContent='Göndərilir...';}
   const { data:authData, error:authErr } = await db.auth.signUp({ email:regForm.email, password:regForm.password, options:{data:{name:regForm.name}} });
   if (authErr && !authErr.message.includes('already registered') && !authErr.message.includes('User already registered')) {
@@ -2769,7 +2771,7 @@ function renderRevenueChart(confirmed, today) {
   const dayNames = ['B.','B.e','Ç.a','Ç.','C.a','C.','Ş.'];
   for (let i=6; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    const str = d.toISOString().split('T')[0];
+    const str = getLocalDateStr(d);
     const dayLabel = i===0 ? 'Bu gün' : dayNames[d.getDay()];
     const bookings = confirmed.filter(b=>b.date===str);
     const rev = bookings.reduce((s,b)=>s+(b.total_price||b.services?.price||0),0);
@@ -2793,6 +2795,7 @@ async function loadDashboard() {
   if (!currentUser) { nav('login'); return; }
   const { data:barber } = await db.from('barbers').select('*,salons(name)').eq('email',currentUser.email).maybeSingle();
   if (!barber) { document.getElementById('dash-barber-name').textContent='Profil tapılmadı'; return; }
+  currentBarberProfile = barber; // keep in sync with fresh DB data
   const greetHour = new Date().getHours();
   const greetText = greetHour < 12 ? 'Sabahınız xeyir' : greetHour < 17 ? 'Günortanız xeyir' : 'Axşamınız xeyir';
   document.getElementById('t-dash-greet').textContent = greetText;
@@ -2842,7 +2845,7 @@ async function loadDashboard() {
   document.getElementById('dash-rating').textContent    = barber.rating?barber.rating.toFixed(1):'—';
 
   // Review count
-  const {data:revCount} = await db.from('reviews').select('id',{count:'exact',head:true}).eq('barber_id',barber.id);
+  const {count:revCount} = await db.from('reviews').select('id',{count:'exact',head:true}).eq('barber_id',barber.id);
   document.getElementById('dash-rev-count').textContent = (revCount||0) + ' rəy';
 
   // Revenue bar chart (last 7 days)
@@ -2947,7 +2950,7 @@ function renderAdmin() {
       <span class="sp ${b.status}">${b.status==='active'?'Aktiv':b.status==='pending'?'Gözləyir':'Silinmiş'}</span>
       ${b.status==='pending'?`<button class="btn-approve" onclick="adminApprove('${b.id}','${b.salon_id}')">Təsdiqlə</button>`:''}
       ${b.status==='active'?`<button class="btn-suspend" onclick="adminSuspend('${b.id}','${b.salon_id}')">Gözlət</button>`:''}
-      ${b.status!=='deleted'?`<button class="btn-delete" onclick="showDelModal('${b.id}','${sanitize(b.name)}')">Sil</button>`:`<button class="btn-restore" onclick="adminRestore('${b.id}','${b.salon_id}')">Bərpa et</button>`}
+      ${b.status!=='deleted'?`<button class="btn-delete" onclick="showDelModalSafe('${b.id}')">Sil</button>`:`<button class="btn-restore" onclick="adminRestore('${b.id}','${b.salon_id}')">Bərpa et</button>`}
     </div>
   </div>`).join('');
 }
@@ -2955,6 +2958,11 @@ function renderAdmin() {
 async function adminApprove(bid,sid){await db.from('barbers').update({status:'active'}).eq('id',bid);await db.from('salons').update({status:'active'}).eq('id',sid);toast('Bərbər təsdiqləndi!');loadAdmin();}
 async function adminSuspend(bid,sid){await db.from('barbers').update({status:'pending'}).eq('id',bid);await db.from('salons').update({status:'pending'}).eq('id',sid);toast('Bərbər gözlətildi.');loadAdmin();}
 async function adminRestore(bid,sid){await db.from('barbers').update({status:'active'}).eq('id',bid);await db.from('salons').update({status:'active'}).eq('id',sid);toast('Bərbər bərpa edildi!');loadAdmin();}
+function showDelModalSafe(id) {
+  const b = allAdminBarbers.find(b=>b.id===id);
+  showDelModal(id, b?.name||'Bərbər');
+}
+
 function showDelModal(id,name){deleteTargetId=id;document.getElementById('del-title').textContent=`${name} silinsin?`;openModal('delete-modal');}
 async function doDelete(){await db.from('barbers').update({status:'deleted'}).eq('id',deleteTargetId);closeModal('delete-modal');toast('Bərbər silindi.');loadAdmin();}
 
@@ -2963,6 +2971,16 @@ let currentProfileBarber = null;
 
 async function openBarberProfile(barberId) {
   nav('profile');
+  // Reset all profile fields before loading new barber
+  document.getElementById('pp-about').style.display = 'none';
+  document.getElementById('pp-about').textContent = '';
+  document.getElementById('pp-location-row').style.display = 'none';
+  document.getElementById('pp-map-nav-row').style.display = 'none';
+  document.getElementById('pp-map-container').style.display = 'none';
+  document.getElementById('pp-map-container').innerHTML = '';
+  if (window._profileMap) { window._profileMap.remove(); window._profileMap = null; }
+  document.getElementById('pp-portfolio').innerHTML = '<div class="portfolio-empty">Yüklənir...</div>';
+  document.getElementById('pp-reviews-list').innerHTML = '<div class="loading">Yüklənir...</div>';
   const { data:barber } = await db.from('barbers').select('*, salons(name,city)').eq('id', barberId).single();
   if (!barber) { toast('Profil tapılmadı'); nav('barbers'); return; }
   currentProfileBarber = barber;
@@ -3146,7 +3164,7 @@ function showClientTab(tab) {
 
 async function clientSignIn() {
   const rl = checkRateLimit('client-login');
-  if (rl.blocked) { return; }
+  if (rl.blocked) { toast('Çox cəhd edildi. Bir az gözləyin.'); return; }
   const email = document.getElementById('cl-email').value.trim();
   const pass = document.getElementById('cl-pass').value;
   if (!email||!pass) { toast('Bütün sahələri doldurun'); return; }
@@ -3172,7 +3190,7 @@ async function clientSignIn() {
 
 async function clientSignUp() {
   const rl = checkRateLimit('client-signup');
-  if (rl.blocked) { return; }
+  if (rl.blocked) { toast('Çox cəhd edildi. Bir az gözləyin.'); return; }
   const name = sanitize(document.getElementById('cl-name')?.value.trim()||'', 100);
   const phone = sanitizePhone(document.getElementById('cl-phone')?.value.trim()||'');
   const email = document.getElementById('cl-reg-email')?.value.trim().toLowerCase()||'';
@@ -3184,10 +3202,23 @@ async function clientSignUp() {
   if (error) { document.getElementById('cl-reg-error').innerHTML=`<div class="error-banner">${sanitize(error.message)}</div>`; return; }
   // Save to clients table
   await db.from('clients').upsert({ name, phone, email }, { onConflict: 'email' });
-  currentClient = { email, name, phone, id: data.user?.id };
-  showClientLoggedInUI();
-  toast('Hesab yaradıldı! Xoş gəldiniz!');
-  nav('clientdash');
+  // Check if Supabase returned a session (email confirmation OFF)
+  // or just a user without session (email confirmation ON)
+  if (data.session) {
+    // Email confirmation is OFF — user is immediately logged in
+    currentClient = { email, name, phone, id: data.user?.id };
+    showClientLoggedInUI();
+    toast('Hesab yaradıldı! Xoş gəldiniz!');
+    nav('clientdash');
+  } else {
+    // Email confirmation is ON — tell user to verify email first
+    document.getElementById('cl-reg-error').innerHTML = `
+      <div style="background:var(--green-light);border:1px solid var(--green-mid);border-radius:9px;padding:12px 14px;font-size:13px;color:var(--green-dark);margin-top:8px">
+        ✅ Hesabınız yaradıldı! Email-inizi yoxlayın və linki tıklayın, sonra daxil olun.
+      </div>`;
+    // Switch to login tab after 2s
+    setTimeout(() => showClientTab('login'), 2500);
+  }
 }
 
 function showClientLoggedInUI() {
@@ -3196,6 +3227,8 @@ function showClientLoggedInUI() {
   document.getElementById('nb-clientdash').style.display = 'inline-flex';
   document.getElementById('mob-client-login-btn').style.display = 'none';
   document.getElementById('mob-clientdash-btn').style.display = 'block';
+  // Hide barber login button when client is logged in
+  document.getElementById('nb-login').style.display = 'none';
 }
 
 function showClientLoggedOutUI() {
@@ -3206,12 +3239,13 @@ function showClientLoggedOutUI() {
 }
 
 async function clientLogout() {
-  // Only sign out if the logged in user is the client (not barber)
   if (!currentBarberProfile) {
     await db.auth.signOut();
   }
   currentClient = null;
   showClientLoggedOutUI();
+  // Restore barber login button
+  document.getElementById('nb-login').style.display = 'inline-flex';
   nav('home');
   toast('Çıxış edildi');
 }
@@ -3254,8 +3288,8 @@ async function loadClientDashboard() {
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0">
         <span class="ab upcoming">Gəlir</span>
-        <button style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--green-light);color:var(--green-dark);border:none;cursor:pointer;font-weight:500" onclick="rebookBarber('${b.barbers?.id}','${sanitize(b.barbers?.name||'')}','${sanitize(b.barbers?.salons?.name||'')}')">Yenidən sifariş</button>
-        <button class="cancel-btn" onclick="clientCancelFromDash('${b.id}','${sanitize(b.barbers?.name||'')}','${b.date}','${b.time}')">Ləğv et</button>
+        <button style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--green-light);color:var(--green-dark);border:none;cursor:pointer;font-weight:500" onclick="rebookFromBooking('${b.barbers?.id}')">Yenidən sifariş</button>
+        <button class="cancel-btn" onclick="clientCancelFromDashById('${b.id}')">Ləğv et</button>
       </div>
     </div>`).join('') : '<div class="empty-state">Gələcək sifariş yoxdur</div>';
   // Render past
@@ -3275,15 +3309,29 @@ async function loadClientDashboard() {
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
         <span class="ab ${isCancelled?'cancelled':'passed'}">${isCancelled?'Ləğv edildi':'Keçdi'}</span>
-        ${!isCancelled?`<button style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--green-light);color:var(--green-dark);border:none;cursor:pointer;font-weight:500" onclick="rebookBarber('${b.barbers?.id}','${sanitize(b.barbers?.name||'')}','${sanitize(b.barbers?.salons?.name||'')}')">Yenidən</button>`:''}
+        ${!isCancelled?`<button style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--green-light);color:var(--green-dark);border:none;cursor:pointer;font-weight:500" onclick="rebookFromBooking('${b.barbers?.id}')">Yenidən</button>`:''}
       </div>
     </div>`;
   }).join('') : '<div class="empty-state">Keçmiş sifariş yoxdur</div>';
 }
 
+function rebookFromBooking(barberId) {
+  const b = _barberCache[barberId] || Object.values(_bookingCache).find(bk=>bk.barbers?.id===barberId)?.barbers;
+  if (!barberId) { toast('Bərbər tapılmadı'); return; }
+  // Try to get name from cache, fallback to empty string (safe)
+  const name = _barberCache[barberId]?.name || b?.name || '';
+  const salon = _barberCache[barberId]?.salons?.name || b?.salons?.name || '';
+  startBookingBarber(barberId, name, salon);
+}
+
 function rebookBarber(barberId, barberName, salonName) {
   if (!barberId) { toast('Bərbər məlumatı tapılmadı'); return; }
   startBookingBarber(barberId, barberName, salonName);
+}
+
+async function clientCancelFromDashById(bookingId) {
+  const b = _bookingCache[bookingId];
+  clientCancelFromDash(bookingId, b?.barbers?.name||'', b?.date||'', b?.time||'');
 }
 
 async function clientCancelFromDash(bookingId, barberName, date, time) {
@@ -3323,10 +3371,22 @@ async function lookupClientBookings() {
       </div>
       <div class="appt-actions">
         <span class="ab ${statusClass}">${statusLabel}</span>
-        ${canCancel?`<button class="cancel-btn" onclick="clientCancelBookingFromLookup('${b.id}','${sanitize(b.barbers?.name||'')}','${b.date}','${b.time}','${phone}')">Ləğv et</button>`:''}
+        ${canCancel?`<button class="cancel-btn" onclick="clientCancelBookingById('${b.id}')">Ləğv et</button>`:''}
       </div>
     </div>`;
   }).join('');
+}
+
+async function clientCancelBookingById(bookingId) {
+  const b = _bookingCache[bookingId];
+  if (b) {
+    clientCancelBookingFromLookup(bookingId, b.barbers?.name||'', b.date||'', b.time||'', b.client_phone||currentClient?.phone||'');
+  } else {
+    // Fallback - just set target and open modal
+    cancelTargetId = bookingId;
+    cancelBookingData = {};
+    openModal('cancel-modal');
+  }
 }
 
 async function clientCancelBookingFromLookup(bookingId, barberName, date, time, phone) {
@@ -3537,7 +3597,7 @@ function renderClientList(clients) {
     return;
   }
   el.innerHTML = clients.map(c => `
-    <div class="client-list-item" onclick="selectClient('${sanitize(c.phone)}')" id="cli-${c.phone.replace(/[^0-9]/g,'')}">
+    <div class="client-list-item" onclick="selectClient('${c.phone.replace(/[^0-9+]/g,\'\')}')" id="cli-${c.phone.replace(/[^0-9]/g,'')}">
       <div class="client-avatar">${sanitize(c.name[0]||'?')}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sanitize(c.name)}</div>
