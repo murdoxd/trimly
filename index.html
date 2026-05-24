@@ -3256,6 +3256,17 @@ async function loadClientDashboard() {
   const greet = greetHour<12?'Sabahınız xeyir':greetHour<17?'Günortanız xeyir':'Axşamınız xeyir';
   document.getElementById('client-greet').textContent = greet;
   document.getElementById('client-dash-name').textContent = sanitize(currentClient.name);
+
+  // Guard: client has no phone stored - can't look up bookings by phone
+  if (!currentClient.phone) {
+    document.getElementById('client-upcoming-list').innerHTML = '<div class="empty-state">Telefon nömrəniz qeydiyyatda yoxdur. Sifarişlərinizi tapmaq üçün "Sifarişimi tap" bölməsindən istifadə edin.</div>';
+    document.getElementById('client-past-list').innerHTML = '';
+    document.getElementById('client-upcoming-count').textContent = '—';
+    document.getElementById('client-past-count').textContent = '—';
+    document.getElementById('client-spent').textContent = '—';
+    return;
+  }
+
   const today = getTodayLocal();
   const now = new Date();
   const nowTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
@@ -3266,6 +3277,13 @@ async function loadClientDashboard() {
     .order('date', {ascending:false})
     .limit(50);
   if (!bookings) { document.getElementById('client-upcoming-list').innerHTML='<div class="empty-state">Sifariş tapılmadı</div>'; return; }
+
+  // Populate cache so cancel/rebook buttons work
+  bookings.forEach(b => {
+    _bookingCache[b.id] = b;
+    if (b.barbers?.id) _barberCache[b.barbers.id] = b.barbers;
+  });
+
   const upcoming = bookings.filter(b => b.status==='confirmed' && (b.date > today || (b.date===today && b.time > nowTime)));
   const past = bookings.filter(b => b.status!=='confirmed' || b.date < today || (b.date===today && b.time <= nowTime));
   const totalSpent = bookings.filter(b=>b.status==='confirmed').reduce((s,b)=>s+(b.services?.price||0),0);
@@ -3597,7 +3615,7 @@ function renderClientList(clients) {
     return;
   }
   el.innerHTML = clients.map(c => `
-    <div class="client-list-item" onclick="selectClient('${c.phone.replace(/[^0-9+]/g,\'\')}')" id="cli-${c.phone.replace(/[^0-9]/g,'')}">
+    <div class="client-list-item" onclick="selectClient(this.dataset.phone)" data-phone="${c.phone}" id="cli-${c.phone.replace(/[^0-9]/g,'')}">
       <div class="client-avatar">${sanitize(c.name[0]||'?')}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sanitize(c.name)}</div>
