@@ -2129,7 +2129,8 @@ async function findUrgent() {
   for (const barber of barbers) {
     const { data:booked } = await db.from('bookings').select('time').eq('barber_id',barber.id).eq('date',today).eq('status','confirmed');
     const bookedTimes=(booked||[]).map(b=>b.time);
-    const available=ALL_TIMES.filter(t=>t>currentTime&&!bookedTimes.includes(t));
+    const barberSlots = generateTimes(barber.start_time||'10:00', barber.end_time||'22:00', 30);
+    const available=barberSlots.filter(t=>t>currentTime&&!bookedTimes.includes(t));
     if (available.length>0) {
       _barberCache[barber.id] = barber;
       r.innerHTML=`<div class="urgent-result"><h4>${sanitize(barber.name)}</h4><p>${sanitize(barber.salons?.name||'Müstəqil')} · Növbəti slot: <strong>${available[0]}</strong> bu gün</p></div>`;
@@ -2516,11 +2517,11 @@ async function doCancelBooking() {
   closeModal('cancel-modal');
   toast('Sifariş ləğv edildi.');
   // Send Telegram cancel notification
-  const b = booking || cancelBookingData;
+  const b = booking || cancelBookingData || {};
   const cancelPayload = {
-    clientName: b.client_name || '—',
+    clientName: b.client_name || cancelBookingData?.clientName || '—',
     clientPhone: b.client_phone || cancelBookingData?.clientPhone || '—',
-    barberName: b.barbers?.name || cancelBookingData?.barberName || '—',
+    barberName: (b.barbers?.name) || cancelBookingData?.barberName || '—',
     date: b.date || cancelBookingData?.date || '—',
     time: b.time || cancelBookingData?.time || '—'
   };
@@ -2735,9 +2736,11 @@ async function submitRegistration() {
   const btn = document.querySelector('#barber-portal-content .btn-main.green') || document.querySelector('#reg-content .btn-main.green') || document.querySelector('#page-register .btn-main.green');
   if(btn){btn.disabled=true;btn.textContent='Göndərilir...';}
   const { data:authData, error:authErr } = await db.auth.signUp({ email:regForm.email, password:regForm.password, options:{data:{name:regForm.name}} });
-  if (authErr && !authErr.message.includes('already registered') && !authErr.message.includes('User already registered')) {
-    if (authErr.message.includes('rate limit')) {
-
+  if (authErr) {
+    if (authErr.message.includes('rate limit') || authErr.message.includes('over_email_send_rate_limit')) {
+      toast('Email göndərmə limiti aşıldı. Bir neçə dəqiqə gözləyin.');
+    } else if (authErr.message.includes('already registered') || authErr.message.includes('User already registered')) {
+      toast('Bu email ilə artıq qeydiyyat var. Zəhmət olmasa daxil olun.');
     } else {
       toast('Hesab xətası: ' + authErr.message);
     }
@@ -3256,20 +3259,18 @@ async function loadClientDashboard() {
   const greet = greetHour<12?'Sabahınız xeyir':greetHour<17?'Günortanız xeyir':'Axşamınız xeyir';
   document.getElementById('client-greet').textContent = greet;
   document.getElementById('client-dash-name').textContent = sanitize(currentClient.name);
-
-  // Guard: client has no phone stored - can't look up bookings by phone
+  const today = getTodayLocal();
+  const now = new Date();
+  const nowTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  // Guard: no phone means we can't look up bookings
   if (!currentClient.phone) {
-    document.getElementById('client-upcoming-list').innerHTML = '<div class="empty-state">Telefon nömrəniz qeydiyyatda yoxdur. Sifarişlərinizi tapmaq üçün "Sifarişimi tap" bölməsindən istifadə edin.</div>';
+    document.getElementById('client-upcoming-list').innerHTML = '<div class="empty-state">Telefon nömrəniz qeydiyyatda yoxdur. "Sifarişimi tap" bölməsini istifadə edin.</div>';
     document.getElementById('client-past-list').innerHTML = '';
     document.getElementById('client-upcoming-count').textContent = '—';
     document.getElementById('client-past-count').textContent = '—';
     document.getElementById('client-spent').textContent = '—';
     return;
   }
-
-  const today = getTodayLocal();
-  const now = new Date();
-  const nowTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   // Load by phone (most reliable since bookings store phone not user id)
   const { data:bookings } = await db.from('bookings')
     .select('*,barbers(id,name,photo_url,salons(name)),services(name,price)')
@@ -3278,7 +3279,7 @@ async function loadClientDashboard() {
     .limit(50);
   if (!bookings) { document.getElementById('client-upcoming-list').innerHTML='<div class="empty-state">Sifariş tapılmadı</div>'; return; }
 
-  // Populate cache so cancel/rebook buttons work
+  // Populate booking cache so cancel/rebook buttons work
   bookings.forEach(b => {
     _bookingCache[b.id] = b;
     if (b.barbers?.id) _barberCache[b.barbers.id] = b.barbers;
@@ -3581,7 +3582,8 @@ async function loadClientHistory() {
   const { data:bookings } = await db.from('bookings')
     .select('client_name,client_phone,date,time,status,services(name,price)')
     .eq('barber_id', currentBarberProfile.id)
-    .order('date', {ascending:false});
+    .order('date', {ascending:false})
+    .limit(500);
   const el = document.getElementById('dash-clients-list');
   if (!el) return;
   if (!bookings || bookings.length === 0) {
@@ -3734,7 +3736,11 @@ async function loadMapPage() {
     .select('id,name,location,photo_url,specialty,rating,review_count,salons(name,city)')
     .eq('status','active');
 
-  if (!barbers || barbers.length === 0) return;
+  if (!barbers || barbers.length === 0) {
+    const sl = document.getElementById('map-barbers-list');
+    if (sl) sl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--gray);font-size:13px">Bərbər tapılmadı</div>';
+    return;
+  }
   mapAllBarbers = barbers;
   renderMapSidebar(barbers);
 
@@ -3953,23 +3959,8 @@ async function loadDashBarberMap(barber) {
   }
   container.innerHTML = '';
   if (window._dashMap) { window._dashMap.remove(); window._dashMap = null; }
-  // Geocode using same multi-format approach
-  const formats = [
-    barber.location + ', Baku, Azerbaijan',
-    barber.location + ', Bakı, Azərbaycan',
-    barber.location + ', Baku',
-    barber.location,
-  ];
-  let coords = null;
-  for (const fmt of formats) {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fmt)}&limit=1&countrycodes=az`,{headers:{'Accept-Language':'az,en'}});
-      const results = await res.json();
-      if (results && results.length > 0) { coords = {lat:parseFloat(results[0].lat),lng:parseFloat(results[0].lon)}; break; }
-      await new Promise(r=>setTimeout(r,200));
-    } catch(e){}
-  }
-  if (!coords) { container.innerHTML='<div style="padding:20px;text-align:center;color:var(--gray);font-size:13px">Ünvan xəritədə tapılmadı. Ünvanı dəqiqləşdirin.</div>'; return; }
+  // Use same smart geocoder as map page (11 formats + fallback)
+  const coords = await smartGeocode(barber.location);
   window._dashMap = L.map(container, {zoomControl:true, dragging:true, scrollWheelZoom:false}).setView([coords.lat, coords.lng], 16);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     attribution:'© <a href="https://carto.com">CARTO</a>', subdomains:'abcd', maxZoom:19
