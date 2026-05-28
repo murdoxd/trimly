@@ -3646,11 +3646,7 @@
                 </div>
             </div>
             <!-- Map -->
-            <div id="map-container" style="flex:1;position:relative">
-                <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--gray)">
-                    <div class="loading">Xəritə yüklənir...</div>
-                </div>
-            </div>
+            <div id="map-container" style="flex:1;position:relative;min-height:300px"></div>
         </div>
     </div>
 
@@ -3922,6 +3918,8 @@
         let regForm = { name: '', salon: '', city: '', phone: '', specialty: '', about: '', location: '', photoUrl: '', email: '', password: '', telegramId: '' };
         let regServices = [{ n: 'Saç kəsimi', p: '10' }, { n: 'Saqqal', p: '5' }];
         let activeDays = ['Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        let regStartTime = '10:00';
+        let regEndTime = '22:00';
         const regDaysAll = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         let pwaPrompt = null;
 
@@ -4260,13 +4258,6 @@
             // Translate hero map button
             const mapBtnText = document.getElementById('t-map-btn-text');
             if (mapBtnText) mapBtnText.textContent = lang === 'ru' ? 'На карте' : lang === 'en' ? 'View on map' : 'Xəritədə gör';
-            // Translate nav map button
-            const navMapBtn = document.getElementById('nb-map');
-            if (navMapBtn) {
-                const mapSpan = navMapBtn.querySelector('span') || navMapBtn;
-                const mapLabel = lang === 'ru' ? 'Карта' : lang === 'en' ? 'Map' : 'Xəritə';
-                if (navMapBtn.querySelector('span')) navMapBtn.querySelector('span') && (navMapBtn.innerHTML = navMapBtn.innerHTML.replace(/Xəritə|Карта|Map/, mapLabel));
-            }
 
             const navLabels = {
                 'nb-home': { az: 'Ana səhifə', ru: 'Главная', en: 'Home' },
@@ -4276,7 +4267,6 @@
                 'nb-client-login': { az: 'Müştəri girişi', ru: 'Вход клиента', en: 'Client login' },
                 'nb-dashboard': { az: 'Kabinetim', ru: 'Кабинет', en: 'Dashboard' },
                 'nb-clientdash': { az: 'Sifarişlərim', ru: 'Мои записи', en: 'My bookings' },
-                'nb-map': { az: 'Xəritə', ru: 'Карта', en: 'Map' },
             };
             Object.entries(navLabels).forEach(([id, labels]) => {
                 const el = document.getElementById(id); if (el) el.textContent = labels[lang];
@@ -4378,9 +4368,14 @@
             const delYes = document.querySelector('#delete-modal .btn-delete');
             if (delYes) delYes.textContent = lang === 'az' ? 'Bəli, sil' : lang === 'ru' ? 'Да, удалить' : 'Yes, delete';
 
-            // Map nav button (span only – preserves SVG)
+            // Map nav button (span only – preserves SVG icon)
             const mapText = document.getElementById('nb-map-text');
             if (mapText) mapText.textContent = lang === 'az' ? 'Xəritə' : lang === 'ru' ? 'Карта' : 'Map';
+            // Also update mobile map button
+            const mobMapBtns = document.querySelectorAll('.mobile-nav-btn');
+            mobMapBtns.forEach(btn => {
+                if (btn.textContent.includes('🗺')) btn.textContent = '🗺 ' + (lang === 'az' ? 'Xəritə' : lang === 'ru' ? 'Карта' : 'Map');
+            });
 
             // Review modal
             const revCancel = document.getElementById('t-review-cancel');
@@ -4507,9 +4502,10 @@
             // Re-render active dynamic pages so inner content translates
             if (document.getElementById('page-barberportal').classList.contains('active')) {
                 const activeTab = document.querySelector('.rsb.active');
-                if (activeTab) regTab(activeTab.id.replace('rs-', ''));
-                const activePortalTab = document.querySelector('#bp-tab-login.active');
-                if (!activePortalTab) showBarberPortalTab('register');
+                if (activeTab) { saveScheduleTab(); regTab(activeTab.id.replace('rs-', '')); }
+                const activePortalTab = document.querySelector('#bp-tab-register.active');
+                if (activePortalTab) showBarberPortalTab('register');
+                else showBarberPortalTab('login');
             }
             if (document.getElementById('page-booking').classList.contains('active')) {
                 renderBooking();
@@ -5221,14 +5217,14 @@
                 c.innerHTML = `<div class="card-box">
       <div class="fg"><label class="fl">İş günləri</label><div class="days-wrap">${regDaysAll.map(d => `<button class="day-tog ${activeDays.includes(d) ? 'on' : ''}" onclick="toggleDay('${d}',this)">${d}</button>`).join('')}</div></div>
       <div class="f2col" style="margin-top:14px">
-        <div class="fg"><label class="fl" id="t-reg-open-label">Açılış vaxtı</label><select class="ff" id="reg-start">${['08:00', '09:00', '10:00', '11:00'].map(t => `<option ${t === '10:00' ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-        <div class="fg"><label class="fl" id="t-reg-close-label">Bağlanış vaxtı</label><select class="ff" id="reg-end">${['18:00', '19:00', '20:00', '21:00', '22:00'].map(t => `<option ${t === '22:00' ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div class="fg"><label class="fl" id="t-reg-open-label">Açılış vaxtı</label><select class="ff" id="reg-start">${['08:00', '09:00', '10:00', '11:00'].map(t => `<option ${t === regStartTime ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div class="fg"><label class="fl" id="t-reg-close-label">Bağlanış vaxtı</label><select class="ff" id="reg-end">${['17:00', '18:00', '19:00', '20:00', '21:00', '22:00'].map(t => `<option ${t === regEndTime ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
       </div>
       <div class="fg"><label class="fl">Görüşlər arası boşluq</label><select class="ff"><option>0 dəq</option><option>5 dəq</option><option selected>10 dəq</option><option>15 dəq</option></select></div>
       <p style="font-size:13px;color:var(--gray);margin-bottom:18px;line-height:1.6">Sistem 30 dəqiqəlik slotlar yaradır.</p>
       <div style="display:flex;gap:10px">
-        <button class="btn-sec" onclick="regTab('profile')">← Geri</button>
-        <button class="btn-main" style="flex:1" onclick="regTab('services')">Saxla və davam et →</button>
+        <button class="btn-sec" onclick="saveScheduleTab();regTab('profile')">← Geri</button>
+        <button class="btn-main" style="flex:1" onclick="saveScheduleTab();regTab('services')">Saxla və davam et →</button>
       </div>
     </div>`;
             } else if (tab === 'services') {
@@ -5241,7 +5237,7 @@
       </div>`).join('')}</div>
       <button class="add-svc-btn" onclick="regServices.push({n:'',p:''});regTab('services')">+ Xidmət əlavə et</button>
       <div style="display:flex;gap:10px">
-        <button class="btn-sec" onclick="regTab('schedule')">← Geri</button>
+        <button class="btn-sec" onclick="saveScheduleTab();regTab('schedule')">← Geri</button>
         <button class="btn-main" style="flex:1" onclick="regTab('payment')">Saxla və davam et →</button>
       </div>
     </div>`;
@@ -5307,6 +5303,13 @@
             regTab('schedule');
         }
 
+        function saveScheduleTab() {
+            const s = document.getElementById('reg-start');
+            const e = document.getElementById('reg-end');
+            if (s) regStartTime = s.value;
+            if (e) regEndTime = e.value;
+        }
+
         function toggleDay(d, btn) {
             const i = activeDays.indexOf(d);
             if (i > -1) { activeDays.splice(i, 1); btn.classList.remove('on'); }
@@ -5331,8 +5334,8 @@
                 if (btn) { btn.disabled = false; btn.textContent = 'Qeydiyyatı göndər'; }
                 return;
             }
-            const startTime = document.getElementById('reg-start')?.value || '10:00';
-            const endTime = document.getElementById('reg-end')?.value || '22:00';
+            const startTime = regStartTime || '10:00';
+            const endTime = regEndTime || '22:00';
             const { data: salonData, error: salonErr } = await db.from('salons').insert({ name: regForm.salon, city: regForm.city, phone: regForm.phone, about: regForm.about, status: 'pending', from_price: regServices.length ? Math.min(...regServices.filter(s => s.p).map(s => parseFloat(s.p) || 0)) : 0 }).select().single();
             if (salonErr) { toast('Salon xətası: ' + (salonErr.message || JSON.stringify(salonErr))); if (btn) { btn.disabled = false; btn.textContent = 'Qeydiyyatı göndər'; } return; }
             const { data: barberData, error: barberErr } = await db.from('barbers').insert({ salon_id: salonData.id, name: regForm.name, email: regForm.email, specialty: regForm.specialty, work_days: activeDays, start_time: startTime, end_time: endTime, buffer_minutes: 10, status: 'pending', location: regForm.location, rating: 0, review_count: 0, phone: regForm.phone, photo_url: regForm.photoUrl || null, telegram_chat_id: regForm.telegramId || null }).select().single();
@@ -5345,6 +5348,8 @@
             regForm = { name: '', salon: '', city: '', phone: '', specialty: '', about: '', location: '', photoUrl: '', email: '', password: '', telegramId: '' };
             regServices = [{ n: 'Saç kəsimi', p: '10' }];
             activeDays = ['Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            regStartTime = '10:00';
+            regEndTime = '22:00';
             regTab('profile');
             if (btn) { btn.disabled = false; btn.textContent = 'Qeydiyyatı göndər'; }
         }
@@ -5614,6 +5619,7 @@
             const coords = await smartGeocode(barber.location);
             container.innerHTML = '';
             window._profileMap = L.map(container, { zoomControl: !coords.approximate, dragging: true, scrollWheelZoom: false }).setView([coords.lat, coords.lng], coords.approximate ? 12 : 16);
+            setTimeout(() => { if (window._profileMap) window._profileMap.invalidateSize(); }, 150);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '© CARTO', subdomains: 'abcd', maxZoom: 19
             }).addTo(window._profileMap);
@@ -6297,19 +6303,23 @@
         let mapPendingBarber = null; // barber to zoom to when map opens
 
         async function loadMapPage() {
-            await new Promise(r => setTimeout(r, 80));
             const container = document.getElementById('map-container');
             if (!container) return;
-            if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+
+            // Remove old map instance cleanly
+            if (mapInstance) { try { mapInstance.remove(); } catch(e){} mapInstance = null; }
             container.innerHTML = '';
 
-            // Use CartoDB Positron — clean, minimal, modern look
+            // Init map IMMEDIATELY — don't wait for geocoding
             mapInstance = L.map('map-container', { zoomControl: true }).setView([40.4093, 49.8671], 12);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '© <a href="https://carto.com">CARTO</a>',
                 subdomains: 'abcd',
                 maxZoom: 19
             }).addTo(mapInstance);
+
+            // Invalidate size after tab becomes visible
+            setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 100);
 
             const { data: barbers } = await db.from('barbers')
                 .select('id,name,location,photo_url,specialty,rating,review_count,salons(name,city)')
@@ -6322,70 +6332,57 @@
             }
             mapAllBarbers = barbers;
             renderMapSidebar(barbers);
-
-            // Geocode all barbers with locations
             mapGeocodedBarbers = [];
-            const withLocation = barbers.filter(b => b.location);
 
+            // Geocode each barber with delay to respect Nominatim rate limit
+            const withLocation = barbers.filter(b => b.location);
             for (const b of withLocation) {
+                if (!mapInstance) break; // user navigated away
                 const coords = await smartGeocode(b.location);
+                if (!mapInstance) break;
                 const marker = addMapMarker(b, coords.lat, coords.lng, coords.approximate);
                 mapGeocodedBarbers.push({ ...b, lat: coords.lat, lng: coords.lng, marker, approximate: coords.approximate });
-                await new Promise(r => setTimeout(r, 300));
+                await new Promise(r => setTimeout(r, 1100)); // 1.1s: respects Nominatim 1 req/sec limit
             }
 
-            // If opened from barber profile - zoom to that barber
-            if (mapPendingBarber) {
-                zoomToBarberById(mapPendingBarber);
-                mapPendingBarber = null;
-            } else if (mapGeocodedBarbers.length > 0) {
-                const bounds = mapGeocodedBarbers.map(b => [b.lat, b.lng]);
-                mapInstance.fitBounds(bounds, { padding: [50, 50] });
+            // Fit bounds after all geocoded
+            if (mapInstance && mapGeocodedBarbers.length > 0) {
+                if (mapPendingBarber) {
+                    zoomToBarberById(mapPendingBarber);
+                    mapPendingBarber = null;
+                } else {
+                    const bounds = mapGeocodedBarbers.map(b => [b.lat, b.lng]);
+                    if (bounds.length > 1) mapInstance.fitBounds(bounds, { padding: [50, 50] });
+                    else mapInstance.setView(bounds[0], 15);
+                }
             }
         }
 
-        // Smart geocoder: tries many formats, ALWAYS returns a location (approximate if needed)
+        // Smart geocoder: tries multiple formats, ALWAYS returns a location
         let _approxOffset = 0;
         async function smartGeocode(rawLocation) {
             if (!rawLocation) return { lat: 40.4093, lng: 49.8671, approximate: true };
             const loc = rawLocation.trim();
             const queries = [
-                loc + ' küçəsi, Bakı, Azərbaycan',
-                loc + ' küç., Bakı',
-                loc + ' prospekti, Bakı',
-                loc + ' street, Baku, Azerbaijan',
-                loc + ', Baku, Azerbaijan',
                 loc + ', Bakı, Azərbaycan',
+                loc + ', Baku, Azerbaijan',
+                loc + ' küçəsi, Bakı',
                 loc + ', Baku',
-                loc + ', Azerbaijan',
                 loc,
-                loc.replace(/\s+\d+$/, '') + ', Baku, Azerbaijan',
-                loc.replace(/\s+\d+$/, '') + ', Bakı',
             ];
             for (const q of queries) {
                 try {
-                    // Try with AZ country filter first
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 4000);
                     let r = await fetch(
                         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&countrycodes=az`,
-                        { headers: { 'Accept-Language': 'az,ru,en' } }
+                        { headers: { 'Accept-Language': 'az,ru,en' }, signal: controller.signal }
                     );
+                    clearTimeout(timeout);
                     let d = await r.json();
                     if (d && d.length > 0) return { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon), approximate: false };
-                    await new Promise(x => setTimeout(x, 150));
-                    // Retry without country filter
-                    r = await fetch(
-                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`,
-                        { headers: { 'Accept-Language': 'az,ru,en' } }
-                    );
-                    d = await r.json();
-                    if (d && d.length > 0) {
-                        const lat = parseFloat(d[0].lat), lng = parseFloat(d[0].lon);
-                        // Must be within ~80km of Baku center
-                        if (Math.abs(lat - 40.4) < 0.7 && Math.abs(lng - 49.85) < 0.7)
-                            return { lat, lng, approximate: false };
-                    }
-                    await new Promise(x => setTimeout(x, 150));
-                } catch (e) { }
+                    await new Promise(x => setTimeout(x, 700));
+                } catch (e) { await new Promise(x => setTimeout(x, 300)); }
             }
             // All failed — scatter around Baku center so markers don't stack
             _approxOffset++;
@@ -6541,6 +6538,7 @@
             // Use same smart geocoder as map page (11 formats + fallback)
             const coords = await smartGeocode(barber.location);
             window._dashMap = L.map(container, { zoomControl: true, dragging: true, scrollWheelZoom: false }).setView([coords.lat, coords.lng], 16);
+            setTimeout(() => { if (window._dashMap) window._dashMap.invalidateSize(); }, 150);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '© <a href="https://carto.com">CARTO</a>', subdomains: 'abcd', maxZoom: 19
             }).addTo(window._dashMap);
